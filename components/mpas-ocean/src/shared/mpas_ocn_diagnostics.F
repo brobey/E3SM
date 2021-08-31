@@ -1425,7 +1425,7 @@ contains
 !
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostic_solve_vortVel(relativeVorticity, &
-                layerThicknessEdge, normalVelocity, normalTransportVelocity, &
+                layerThicknessEdge, normalVelocityType, normalTransportVelocity, &
                 normalGMBolusVelocity, vertVelocityTop, vertTransportVelocityTop, &
                 vertGMBolusVelocityTop, relativeVorticityCell, divergence, &
                 kineticEnergyCell, tangentialVelocity)!{{{
@@ -1443,7 +1443,7 @@ contains
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          layerThicknessEdge
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-         normalVelocity
+         normalVelocityType
       real (kind=RKIND), dimension(:,:), intent(in) :: &
          normalTransportVelocity
       real (kind=RKIND), dimension(:,:), intent(in) :: &
@@ -1532,7 +1532,7 @@ contains
       !$acc parallel loop gang vector &
       !$acc          present(divergence, kineticEnergyCell, &
       !$acc                  areaCell, nEdgesOnCell, edgesOnCell, edgeSignOnCell, dcEdge, dvEdge, &
-      !$acc                  maxLevelCell, normalVelocity, divergence, layerThicknessEdge, &
+      !$acc                  maxLevelCell, normalVelocityType, divergence, layerThicknessEdge, &
       !$acc                  normalTransportVelocity, normalGMBolusVelocity, vertVelocityTop, &
       !$acc                  vertTransportVelocityTop, vertGMBolusVelocityTop, invAreaCell, &
       !$acc                  minLevelCell) &
@@ -1557,12 +1557,12 @@ contains
             dcEdge_temp = dcEdge(iEdge)
             dvEdge_temp = dvEdge(iEdge)
             do k = minLevelCell(iCell), maxLevelCell(iCell)
-               r_tmp = dvEdge_temp * normalVelocity(k, iEdge) * invAreaCell1
+               r_tmp = dvEdge_temp * normalVelocityType(k, iEdge) * invAreaCell1
 
                divergence(k, iCell) = divergence(k, iCell) - edgeSignOnCell_temp * r_tmp
                div_hu(k) = div_hu(k) - layerThicknessEdge(k, iEdge) * edgeSignOnCell_temp * r_tmp
                kineticEnergyCell(k, iCell) = kineticEnergyCell(k, iCell) &
-                                              + 0.25 * r_tmp * dcEdge_temp * normalVelocity(k,iEdge)
+                                              + 0.25 * r_tmp * dcEdge_temp * normalVelocityType(k,iEdge)
                ! Compute vertical velocity from the horizontal total transport
                div_huTransport(k) = div_huTransport(k) &
                                     - layerThicknessEdge(k, iEdge) * edgeSignOnCell_temp &
@@ -1593,7 +1593,7 @@ contains
 #ifdef MPAS_OPENACC
       !$acc parallel loop gang vector &
       !$acc          present(tangentialVelocity, nEdgesOnEdge, edgesOnEdge, weightsOnEdge, &
-      !$acc                  maxLevelEdgeTop, normalVelocity, minLevelEdgeBot) &
+      !$acc                  maxLevelEdgeTop, normalVelocityType, minLevelEdgeBot) &
       !$acc          private(i, eoe, weightsOnEdge_temp, k)
 #else
       !$omp parallel
@@ -1607,7 +1607,7 @@ contains
             weightsOnEdge_temp = weightsOnEdge(i, iEdge)
             do k = minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
                tangentialVelocity(k,iEdge) = tangentialVelocity(k,iEdge) &
-                                              + weightsOnEdge_temp * normalVelocity(k, eoe)
+                                              + weightsOnEdge_temp * normalVelocityType(k, eoe)
             end do
          end do
       end do
