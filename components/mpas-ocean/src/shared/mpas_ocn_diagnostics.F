@@ -20,8 +20,8 @@
 
 module ocn_diagnostics
 
-   use mpas_timer
-   use mpas_derived_types
+   use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+   use mpas_derived_types, only : RKIND, strkind
    use mpas_pool_routines
    use mpas_constants
    use mpas_threading
@@ -29,7 +29,7 @@ module ocn_diagnostics
    use mpas_stream_manager
    use mpas_io_units
 
-   use ocn_constants
+!  use ocn_constants
    use ocn_config
    use ocn_gm
    use ocn_equation_of_state
@@ -94,6 +94,8 @@ contains
 
    subroutine ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, &
                                    timeLevelIn, full)!{{{
+
+      implicit none
 
       real (kind=RKIND), intent(in) :: dt !< Input: Time step
       type (mpas_pool_type), intent(in) :: statePool !< Input: State information
@@ -495,6 +497,8 @@ contains
 !-----------------------------------------------------------------------
 
    subroutine ocn_relativeVorticity_circulation(relativeVorticity, circulation, normalVelocity, err)!{{{
+
+      implicit none
 
       !-----------------------------------------------------------------
       !
@@ -1109,6 +1113,8 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostic_solve_richardson(displacedDensity, density, zMid, &
                 normalVelocity, edgeAreaFractionOfCell, BruntVaisalaFreqTop, RiTopOfCell)!{{{
+
+      use ocn_constants, only : rho_sw
 
       implicit none
 
@@ -1934,6 +1940,8 @@ contains
                 have_landIceDraft, landIceDraft, &
                 pressureAdjustedSSH, gradSSH)!{{{
 
+      use ocn_constants, only : rho_sw
+
       implicit none
 
       !-----------------------------------------------------------------
@@ -2040,6 +2048,8 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_vert_transport_velocity_top(meshPool, verticalMeshPool, oldLayerThickness, layerThicknessEdge, &
      normalVelocity, oldSSH, dt, vertAleTransportTop, err, newHighFreqThickness)!{{{
+
+      implicit none
 
       !-----------------------------------------------------------------
       !
@@ -2231,6 +2241,8 @@ contains
 
    subroutine ocn_fuperp(statePool, meshPool, timeLevelIn)!{{{
 
+      implicit none
+
       type (mpas_pool_type), intent(inout) :: statePool !< Input/Output: State information
       type (mpas_pool_type), intent(in) :: meshPool !< Input: mesh information
       integer, intent(in), optional :: timeLevelIn !< Input: Input time level for state pool
@@ -2306,6 +2318,8 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_filter_btr_mode_tend_vel(tendPool, statePool, meshPool, timeLevelIn)!{{{
 
+      implicit none
+
       type (mpas_pool_type), intent(inout) :: tendPool !< Input/Output: Tendency information
       type (mpas_pool_type), intent(in) :: statePool !< Input: State information
       type (mpas_pool_type), intent(in) :: meshPool !< Input: Mesh information
@@ -2372,6 +2386,10 @@ contains
 !-----------------------------------------------------------------------
 
     subroutine ocn_compute_KPP_input_fields(statePool, forcingPool, meshPool, timeLevelIn)!{{{
+
+      use ocn_constants, only : rho_sw
+
+      implicit none
 
       type (mpas_pool_type), intent(in) :: statePool !< Input/Output: State information
       type (mpas_pool_type), intent(in) :: forcingPool !< Input: Forcing information
@@ -2580,6 +2598,10 @@ contains
    subroutine ocn_compute_land_ice_flux_input_fields(layerThickness, normalVelocity, &
       activeTracers, landIceFraction, landIceMask, &
       timeLevel, indexTval, indexSval)!{{{
+
+      use ocn_constants, only : rho_sw
+
+      implicit none
 
       !-----------------------------------------------------------------
       !
@@ -2843,6 +2865,8 @@ contains
 
    subroutine ocn_reconstruct_gm_vectors(meshPool) !{{{
 
+      implicit none
+
       type (mpas_pool_type), intent(in) :: meshPool !< Input: mesh information
 
       call mpas_timer_start('reconstruct gm vecs')
@@ -2893,6 +2917,9 @@ contains
 !
 !-----------------------------------------------------------------------
    subroutine ocn_validate_state(domain, timeLevel)!{{{
+
+      implicit none
+
       type (domain_type), intent(inout) :: domain
       integer, intent(in), optional :: timeLevel
 
@@ -2908,7 +2935,7 @@ contains
       real (kind=RKIND), dimension(:, :), pointer :: layerThickness, normalVelocity
       real (kind=RKIND), dimension(:, :, :), pointer :: activeTracers
 
-      integer, dimension(:), pointer :: maxLevelCell, maxLevelEdgeBot, maxLevelVertexBot
+      !!integer, dimension(:), pointer :: maxLevelCell, maxLevelEdgeBot, maxLevelVertexBot
 
       real (kind=RKIND), dimension(:), pointer :: real1DArr
 
@@ -2951,9 +2978,9 @@ contains
          call mpas_pool_get_dimension(meshPool, 'nEdgesSolve', nEdgesSolve)
          call mpas_pool_get_dimension(meshPool, 'nVerticesSolve', nVerticesSolve)
 
-         call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
-         call mpas_pool_get_array(meshPool, 'maxLevelEdgeBot', maxLevelEdgeBot)
-         call mpas_pool_get_array(meshPool, 'maxLevelVertexBot', maxLevelVertexBot)
+         !!!call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
+         !!!call mpas_pool_get_array(meshPool, 'maxLevelEdgeBot', maxLevelEdgeBot)
+         !!!call mpas_pool_get_array(meshPool, 'maxLevelVertexBot', maxLevelVertexBot)
 
          call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, timeLevel=timeLevelLocal)
          call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, timeLevel=timeLevelLocal)
@@ -3479,6 +3506,9 @@ contains
    end subroutine ocn_validate_state!}}}
 
    function ocn_build_log_filename(prefix, identifier) result(filename)!{{{
+
+      implicit none
+
       character (len=*), intent(in) :: prefix
       integer, intent(in) :: identifier
 
@@ -3509,6 +3539,9 @@ contains
    end function ocn_build_log_filename!}}}
 
    subroutine ocn_write_field_statistics(unitNumber, fieldName, minValue, maxValue)
+
+      implicit none
+
       integer, intent(in) :: unitNumber
       character (len=*), intent(in) :: fieldName
       real (kind=RKIND), intent(in) :: minValue, maxValue
@@ -3532,6 +3565,9 @@ contains
 !
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostics_init(domain, err)!{{{
+
+      implicit none
+
       type(domain_type), intent(in) :: domain
       integer, intent(out) :: err !< Output: Error flag
 
