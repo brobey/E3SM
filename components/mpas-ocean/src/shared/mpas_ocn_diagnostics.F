@@ -20,22 +20,7 @@
 
 module ocn_diagnostics
 
-   use mpas_timer, only : mpas_timer_start, mpas_timer_stop
-   use mpas_derived_types, only : RKIND, strkind
-   use mpas_pool_routines
-   use mpas_constants
-   use mpas_threading
-   use mpas_vector_reconstruction
-   use mpas_stream_manager
-   use mpas_io_units
-
-!  use ocn_constants
-   use ocn_config
-   use ocn_gm
-   use ocn_equation_of_state
-   use ocn_thick_ale
-   use ocn_diagnostics_variables
-   use ocn_mesh
+   use mpas_kind_types, only : RKIND
 
    implicit none
    private
@@ -94,6 +79,55 @@ contains
 
    subroutine ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, &
                                    timeLevelIn, full)!{{{
+
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+      use mpas_pool_routines, only : mpas_pool_type, mpas_pool_get_dimension, &
+         mpas_pool_get_array
+      use ocn_equation_of_state, only : ocn_equation_of_state_density
+      use ocn_config, only : config_coef_3rd_order
+      use ocn_diagnostics_variables, only : &
+         normalTransportVelocity,           &
+         normalGMBolusVelocity,             &
+         tracersSurfaceValue,               &
+         layerThickEdge,                    &
+         relativeVorticity,                 &
+         circulation,                       &
+         vertVelocityTop,                   &
+         vertTransportVelocityTop,          &
+         vertGMBolusVelocityTop,            &
+         relativeVorticityCell,             &
+         divergence,                        &
+         kineticEnergyCell,                 &
+         tangentialVelocity,                &
+         normRelVortEdge,                   &
+         normPlanetVortEdge,                &
+         normalizedRelativeVorticityCell,   &
+         surfacePressure,                   &
+         zMid,                              &
+         zTop,                              &
+         density,                           &
+         montgomeryPotential,               &
+         pressure,                          &
+         displacedDensity,                  &
+         BruntVaisalaFreqTop,               &
+         RiTopOfCell,                       &
+         normalVelocitySurfaceLayer,        &
+         tracersSurfaceLayerValue,          &
+         indexSurfaceLayerDepth,            &
+         sfcFlxAttCoeff,                    &
+         potentialDensity,                  &
+         thermExpCoeff,                     &
+         salineContractCoeff,               &
+         pressureAdjustedSSH,               &
+         gradSSH,                           &
+         surfaceFluxAttenuationCoefficientRunoff
+      use ocn_mesh, only :         &
+         nCellsAll,                &
+         nEdgesAll,                &
+         nVerticesAll,             &
+         minLevelEdgeBot,          &
+         minLevelCell,             &
+         edgeAreaFractionOfCell
 
       implicit none
 
@@ -325,14 +359,14 @@ contains
       ! tracersSurfaceValue calc
       ! inputs: activeTracers, minLevelCell
       ! outputs: tracersSurfaceValue
-!     !$acc parallel loop !!!present(tracersSurfaceValue, activeTracers, minLevelCell)
+!     !$acc parallel loop collapse present(tracersSurfaceValue, activeTracers, minLevelCell)
 #else
       !$omp parallel
       !$omp do schedule(runtime)
 #endif
       do iCell = 1, nCells
          tracersSurfaceValue(:, iCell) = activeTracers(:, minLevelCell(iCell), iCell)
-      end do
+      enddo
 #ifdef MPAS_OPENACC
       !$acc update device(tracersSurfaceValue)
 #else
@@ -498,6 +532,17 @@ contains
 
    subroutine ocn_relativeVorticity_circulation(relativeVorticity, circulation, normalVelocity, err)!{{{
 
+      use ocn_mesh, only :          &
+          nVerticesAll,             &
+          vertexDegree,             &
+          nVertLevels,              &
+          areaTriangle,             &
+          edgesOnVertex,            &
+          maxLevelVertexBot,        &
+          dcEdge,                   &
+          edgeSignOnVertex,         &
+          minLevelVertexTop
+
       implicit none
 
       !-----------------------------------------------------------------
@@ -593,6 +638,17 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostic_solve_layerThicknessEdge(normalVelocity, layerThickness, &
                 layerThicknessEdge)!{{{
+
+      use mpas_derived_types, only : MPAS_LOG_CRIT
+      use mpas_log, only: mpas_log_write
+      use ocn_config, only : &
+         config_use_wetting_drying, &
+         config_thickness_flux_type
+      use ocn_mesh, only :          &
+          nEdgesAll,                &
+          minLevelEdgeBot,          &
+          maxLevelEdgeTop,          &
+          cellsOnEdge
 
       implicit none
 
@@ -702,6 +758,21 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostic_solve_kineticEnergy(normalVelocity, &
                 kineticEnergyCell)!{{{
+
+      use ocn_mesh, only :          &
+          nEdgesOnCell,             &
+          nCellsHalo,               &
+          nVerticesAll,             &
+          nVertLevels,              &
+          vertexDegree,             &
+          areaTriangle,             &
+          dcEdge,                   &
+          dvEdge,                   &
+          edgesOnVertex,            &
+          kiteIndexOnCell,          &
+          kiteAreasOnVertex,        &
+          invAreaCell,              &
+          verticesOnCell
 
       implicit none
 
@@ -835,6 +906,36 @@ contains
                 layerThickness, relativeVorticity, &
                 normalizedRelativeVorticityEdge, normalizedPlanetaryVorticityEdge, &
                 normalizedRelativeVorticityCell)!{{{
+
+      use ocn_config, only : config_apvm_scale_factor
+      use ocn_mesh, only :          &
+          nCellsAll,                &
+          nVerticesAll,             &
+          vertexDegree,             &
+          nVertLevels,              &
+          nEdgesHalo,               &
+          nCellsHalo,               &
+          nVerticesHalo,            &
+          nEdgesOnCell,             &
+          minLevelCell,             &
+          minLevelEdgeTop,          &
+          minLevelEdgeBot,          &
+          maxLevelCell,             &
+          maxLevelEdgeTop,          &
+          maxLevelEdgeBot,          &
+          maxLevelVertexBot,        &
+          cellsOnEdge,              &
+          verticesOnEdge,           &
+          verticesOnCell,           &
+          cellsOnVertex,            &
+          kiteIndexOnCell,          &
+          fVertex,                  &
+          dcEdge,                   &
+          dvEdge,                   &
+          areaCell,                 &
+          invAreaCell,              &
+          areaTriangle,             &
+          kiteAreasOnVertex
 
       implicit none
 
@@ -1112,9 +1213,18 @@ contains
 !
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostic_solve_richardson(displacedDensity, density, zMid, &
-                normalVelocity, edgeAreaFractionOfCell, BruntVaisalaFreqTop, RiTopOfCell)!{{{
+                normalVelocity, edgeAreaFractionOfCell_in, BruntVaisalaFreqTop, RiTopOfCell)!{{{
 
+      use mpas_constants, only : gravity
       use ocn_constants, only : rho_sw
+      use ocn_mesh, only :          &
+          nCellsAll,                &
+          nCellsHalo,               &
+          maxLevelCell,             &
+          minLevelCell,             &
+          nEdgesOnCell,             &
+          edgeAreaFractionOfCell,   &
+          edgesOnCell
 
       implicit none
 
@@ -1133,7 +1243,7 @@ contains
       real (kind=RKIND), dimension(:,:), intent(in) :: &
         normalVelocity
       real (kind=RKIND), dimension(:,:), intent(in) :: &
-        edgeAreaFractionOfCell
+        edgeAreaFractionOfCell_in
 
       !-----------------------------------------------------------------
       !
@@ -1238,6 +1348,21 @@ contains
                 layerThicknessEdge, normalVelocity, tracersSurfaceLayerValue,  &
                 indexSurfaceLayerDepth, normalVelocitySurfaceLayer, &
                 surfaceFluxAttenuationCoefficient, surfaceFluxAttenuationCoefficientRunoff)!{{{
+
+      use ocn_config, only :                         &
+         config_flux_attenuation_coefficient,        &
+         config_flux_attenuation_coefficient_runoff, &
+         config_use_cvmix_kpp,                       &
+         config_cvmix_kpp_surface_layer_averaging
+      use ocn_mesh, only :          &
+          nCellsOwned,              &
+          nEdgesOwned,              &
+          nCellsHalo,               &
+          minLevelCell,             &
+          minLevelEdgeBot,          &
+          maxLevelCell,             &
+          maxLevelEdgeTop,          &
+          cellsOnEdge
 
       implicit none
 
@@ -1435,6 +1560,29 @@ contains
                 normalGMBolusVelocity, vertVelocityTop, vertTransportVelocityTop, &
                 vertGMBolusVelocityTop, relativeVorticityCell, divergence, &
                 kineticEnergyCell, tangentialVelocity)!{{{
+
+      use ocn_mesh, only :         &
+         nCellsOwned,              &
+         nCellsHalo,               &
+         nVertLevels,              &
+         nEdgesHalo,               &
+         areaCell,                 &
+         nEdgesOnCell,             &
+         kiteIndexOnCell,          &
+         verticesOnCell,           &
+         maxLevelCell,             &
+         kiteAreasOnVertex,        &
+         invAreaCell,              &
+         minLevelCell,             &
+         edgesOnCell,              &
+         edgeSignOnCell,           &
+         dcEdge,                   &
+         dvEdge,                   &
+         nEdgesOnEdge,             &
+         edgesOnEdge,              &
+         weightsOnEdge,            &
+         maxLevelEdgeTop,          &
+         minLevelEdgeBot
 
       implicit none
 
@@ -1638,6 +1786,9 @@ contains
    subroutine ocn_diagnostic_solve_surface_pressure(forcingPool, atmosphericPressure, &
                 seaIcePressure, surfacePressure)!{{{
 
+      use mpas_pool_routines, only : mpas_pool_type, mpas_pool_get_array
+      use ocn_mesh, only : nCellsAll
+
       implicit none
 
       !-----------------------------------------------------------------
@@ -1720,6 +1871,13 @@ contains
 !
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostic_solve_z_coordinates(layerThickness, zMid, zTop, ssh)!{{{
+
+      use ocn_mesh, only :          &
+          nCellsAll,                &
+          nVertLevels,              &
+          minLevelCell,             &
+          maxLevelCell,             &
+          bottomDepth
 
       implicit none
 
@@ -1806,6 +1964,15 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostic_solve_pressure(layerThickness, density, &
                 surfacePressure, montgomeryPotential, pressure)!{{{
+
+      use mpas_constants, only : gravity
+      use ocn_config, only : config_pressure_gradient_type
+      use ocn_mesh, only :          &
+          nCellsAll,                &
+          nVertLevels,              &
+          minLevelCell,             &
+          maxLevelCell,             &
+          bottomDepth
 
       implicit none
 
@@ -1940,7 +2107,15 @@ contains
                 have_landIceDraft, landIceDraft, &
                 pressureAdjustedSSH, gradSSH)!{{{
 
+      use mpas_pool_routines, only : mpas_pool_type
+      use mpas_constants, only : gravity
       use ocn_constants, only : rho_sw
+      use ocn_mesh, only :          &
+          nEdgesHalo,               &
+          nCellsHalo,               &
+          cellsOnEdge,              &
+          dcEdge,                   &
+          edgeMask
 
       implicit none
 
@@ -2048,6 +2223,24 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_vert_transport_velocity_top(meshPool, verticalMeshPool, oldLayerThickness, layerThicknessEdge, &
      normalVelocity, oldSSH, dt, vertAleTransportTop, err, newHighFreqThickness)!{{{
+
+      use mpas_pool_routines, only : mpas_pool_type, mpas_pool_get_array
+      use ocn_config, only : config_vert_coord_movement
+      use ocn_thick_ale, only : ocn_ale_thickness
+      use ocn_mesh, only :         &
+         nCellsAll,                &
+         nVertLevels,              &
+         nCellsHalo,               &
+         invAreaCell,              &
+         nEdgesOnCell,             &
+         edgesOnCell,              &
+         maxLevelEdgeTop,          &
+         dvEdge,                   &
+         minLevelEdgeBot,          &
+         maxLevelCell,             &
+         minLevelCell
+
+!         !edgeSignOnCell,           &
 
       implicit none
 
@@ -2241,6 +2434,19 @@ contains
 
    subroutine ocn_fuperp(statePool, meshPool, timeLevelIn)!{{{
 
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+      use mpas_pool_routines, only : mpas_pool_type, mpas_pool_get_array
+      use ocn_mesh, only :          &
+          nEdgesOwned,              &
+          nEdgesOnEdge,             &
+          minLevelEdgeBot,          &
+          maxLevelEdgeTop,          &
+          maxLevelVertexBot,        &
+          edgesOnEdge,              &
+          cellsOnEdge,              &
+          fEdge,                    &
+          weightsOnEdge
+
       implicit none
 
       type (mpas_pool_type), intent(inout) :: statePool !< Input/Output: State information
@@ -2318,6 +2524,15 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_filter_btr_mode_tend_vel(tendPool, statePool, meshPool, timeLevelIn)!{{{
 
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+      use mpas_pool_routines, only : mpas_pool_type, mpas_pool_get_array
+      use ocn_diagnostics_variables, only : layerThickEdge
+      use ocn_mesh, only :          &
+          nEdgesAll,                &
+          minLevelEdgeBot,          &
+          maxLevelEdgeTop,          &
+          maxLevelEdgeBot
+
       implicit none
 
       type (mpas_pool_type), intent(inout) :: tendPool !< Input/Output: Tendency information
@@ -2387,7 +2602,28 @@ contains
 
     subroutine ocn_compute_KPP_input_fields(statePool, forcingPool, meshPool, timeLevelIn)!{{{
 
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+      use mpas_pool_routines, only : mpas_pool_type, mpas_pool_get_subpool, &
+         mpas_pool_get_dimension, mpas_pool_get_array
+      use mpas_constants, only : gravity
+      use ocn_config, only : &
+         config_flux_attenuation_coefficient, &
+         config_flux_attenuation_coefficient_runoff
+      use ocn_equation_of_state, only : ocn_equation_of_state_density
+      use ocn_diagnostics_variables, only : &
+         surfaceBuoyancyForcing,            &
+         surfaceFrictionVelocity,           &
+         tracersSurfaceValue,               &
+         penetrativeTemperatureFluxOBL
       use ocn_constants, only : rho_sw
+      use ocn_mesh, only :         &
+         nCellsAll,                &
+         nVertLevels,              &
+         nCellsHalo,               &
+         minLevelCell,             &
+         nEdgesOnCell,             &
+         edgesOnCell,              &
+         edgeAreaFractionOfCell
 
       implicit none
 
@@ -2599,7 +2835,40 @@ contains
       activeTracers, landIceFraction, landIceMask, &
       timeLevel, indexTval, indexSval)!{{{
 
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+      use ocn_config, only :                                     &
+         config_land_ice_flux_topdragcoeff,                      &
+         config_land_ice_flux_rms_tidal_velocity,                &
+         config_land_ice_flux_boundarylayerthickness,            &
+         config_land_ice_flux_jenkins_heat_transfer_coefficient, &
+         config_land_ice_flux_jenkins_salt_transfer_coefficient, &
+         config_land_ice_flux_attenuation_coefficient,           &
+         config_land_ice_flux_boundarylayerneighborweight,       &
+         config_land_ice_flux_mode
+      use ocn_diagnostics_variables, only : &
+         kineticEnergyCell,                 &
+         topDrag,                           &
+         landIceFrictionVelocity,           &
+         topDragMag,                        &
+         landIceBoundaryLayerTracers,       &
+         landIceTracerTransferVelocities,   &
+         sfcFlxAttCoeff,                    &
+         indexBLT,                          &
+         indexBLS,                          &
+         indexHeatTrans,                    &
+         indexSaltTrans
       use ocn_constants, only : rho_sw
+      use ocn_mesh, only :          &
+          nCellsAll,                &
+          nEdgesAll,                &
+          cellsOnEdge,              &
+          minLevelCell,             &
+          minLevelEdgeBot,          &
+          maxLevelCell,             &
+          cellsOnCell,              &
+          nEdgesOnCell,             &
+          cellMask,                 &
+          fCell
 
       implicit none
 
@@ -2865,6 +3134,29 @@ contains
 
    subroutine ocn_reconstruct_gm_vectors(meshPool) !{{{
 
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+      use mpas_pool_routines, only : mpas_pool_type
+      use mpas_vector_reconstruction, only : mpas_reconstruct
+      use ocn_diagnostics_variables, only :  &
+         normalTransportVelocity,            &
+         transportVelocityX,                 &
+         transportVelocityY,                 &
+         transportVelocityZ,                 &
+         transportVelocityZonal,             &
+         transportVelocityMeridional,        &
+         normalGMBolusVelocity,              &
+         GMBolusVelocityX,                   &
+         GMBolusVelocityY,                   &
+         GMBolusVelocityZ,                   &
+         GMBolusVelocityZonal,               &
+         GMBolusVelocityMeridional,          &
+         gmStreamFuncTopOfEdge,              &
+         GMStreamFuncX,                      &
+         GMStreamFuncY,                      &
+         GMStreamFuncZ,                      &
+         GMStreamFuncZonal,                  &
+         GMStreamFuncMeridional
+
       implicit none
 
       type (mpas_pool_type), intent(in) :: meshPool !< Input: mesh information
@@ -2917,6 +3209,20 @@ contains
 !
 !-----------------------------------------------------------------------
    subroutine ocn_validate_state(domain, timeLevel)!{{{
+
+      use mpas_derived_types, only : StrKIND, MPAS_LOG_CRIT
+      use mpas_pool_routines, only : domain_type, block_type, &
+         mpas_pool_type, mpas_pool_get_subpool, mpas_pool_get_dimension, &
+         mpas_pool_get_array
+      use mpas_io_units, only : mpas_new_unit, mpas_release_unit
+      use mpas_stream_manager, only :  &
+         MPAS_stream_mgr_block_write,  &
+         MPAS_stream_mgr_stream_exists 
+      use ocn_mesh, only :         &
+         minLevelCell,             &
+         maxLevelCell,             &
+         minLevelEdgeTop,          &
+         maxLevelEdgeBot
 
       implicit none
 
@@ -3507,6 +3813,8 @@ contains
 
    function ocn_build_log_filename(prefix, identifier) result(filename)!{{{
 
+      use mpas_derived_types, only : StrKIND
+
       implicit none
 
       character (len=*), intent(in) :: prefix
@@ -3565,6 +3873,13 @@ contains
 !
 !-----------------------------------------------------------------------
    subroutine ocn_diagnostics_init(domain, err)!{{{
+
+      use mpas_pool_routines, only : domain_type
+      use ocn_config, only :               &
+         config_land_ice_flux_formulation, &
+         config_include_KE_vertex,         &
+         config_time_integrator
+      use ocn_diagnostics_variables, only : ocn_diagnostics_variables_init
 
       implicit none
 
