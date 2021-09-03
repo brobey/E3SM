@@ -20,13 +20,7 @@
 
 module ocn_equation_of_state_linear
 
-   use mpas_kind_types
-   use mpas_derived_types
-   use mpas_pool_routines
-   use ocn_constants
-   use ocn_config
-   use mpas_dmpar
-   use mpas_log
+   use mpas_kind_types, only : RKIND
 
    implicit none
    private
@@ -103,6 +97,7 @@ contains
               indexT, indexS, tracers, density, err,              &
               tracersSurfaceLayerValue)
       !{{{
+
       !-----------------------------------------------------------------
       !
       ! Input variables
@@ -247,6 +242,7 @@ contains
               thermalExpansionCoeff, salineContractionCoeff,      &
               tracersSurfaceLayerValue)
       !{{{
+
       !-----------------------------------------------------------------
       !
       ! Input variables
@@ -414,6 +410,13 @@ contains
    subroutine ocn_equation_of_state_linear_init(err)!{{{
 
    !--------------------------------------------------------------------
+
+      use ocn_config, only :           &
+         config_eos_linear_densityref, &
+         config_eos_linear_alpha,      &
+         config_eos_linear_beta,       &
+         config_eos_linear_tref,       &
+         config_eos_linear_sref
 
       !-----------------------------------------------------------------
       !

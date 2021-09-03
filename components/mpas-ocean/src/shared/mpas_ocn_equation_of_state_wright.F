@@ -23,14 +23,7 @@
 
 module ocn_equation_of_state_wright
 
-   use mpas_kind_types
-   use mpas_derived_types
-   use mpas_pool_routines
-   use mpas_dmpar
-   use mpas_log
-   use mpas_constants
-   use ocn_constants
-   use ocn_config
+   use mpas_kind_types, only : RKIND
 
    implicit none
    private
@@ -145,6 +138,7 @@ contains
                                tracersSurfaceLayerValue)
 
    !{{{
+
    !--------------------------------------------------------------------
 
       !-----------------------------------------------------------------
@@ -293,6 +287,7 @@ contains
                                salineContractionCoeff,                      &
                                tracersSurfaceLayerValue)
    !{{{
+
    !--------------------------------------------------------------------
 
       !-----------------------------------------------------------------
@@ -459,6 +454,9 @@ contains
    subroutine ocn_equation_of_state_wright_init(domain, err)!{{{
 
    !--------------------------------------------------------------------
+
+      use mpas_pool_routines, only : domain_type
+      use ocn_config, only : config_eos_wright_ref_pressure
 
       !-----------------------------------------------------------------
       ! Input variables
@@ -641,6 +639,9 @@ contains
                                    boussinesqPres)
    !{{{
    !--------------------------------------------------------------------
+
+      use mpas_constants, only : gravity
+      use ocn_constants, only : rho_sw
 
       !-----------------------------------------------------------------
       ! Input variables

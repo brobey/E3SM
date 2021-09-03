@@ -23,12 +23,7 @@
 
 module ocn_equation_of_state_jm
 
-   use mpas_kind_types
-   use mpas_derived_types
-   use mpas_pool_routines
-   use mpas_dmpar
-   use mpas_log
-   use ocn_constants
+   use mpas_kind_types, only : RKIND
 
    implicit none
    private
@@ -790,6 +785,14 @@ contains
    subroutine ocn_equation_of_state_jm_init(domain, err)!{{{
 
    !--------------------------------------------------------------------
+
+      use mpas_pool_routines, only : &
+         domain_type,                &
+         block_type,                 &
+         mpas_pool_type,             &
+         mpas_pool_get_subpool,      &
+         mpas_pool_get_dimension,    &
+         mpas_pool_get_array
 
       !-----------------------------------------------------------------
       ! Input variables

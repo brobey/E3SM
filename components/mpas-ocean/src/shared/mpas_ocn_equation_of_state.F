@@ -20,18 +20,6 @@
 
 module ocn_equation_of_state
 
-   use mpas_timer
-   use mpas_kind_types
-   use mpas_derived_types
-   use mpas_pool_routines
-   use ocn_equation_of_state_linear
-   use ocn_equation_of_state_jm
-   use ocn_equation_of_state_wright
-   use ocn_constants
-   use ocn_config
-   use ocn_diagnostics_variables
-   use mpas_log
-
    implicit none
    private
    save
@@ -100,6 +88,15 @@ contains
                            nCells, kDisplaced, displacement_type, density, err,       &
                            thermalExpansionCoeff, salineContractionCoeff, timeLevelIn)
       !{{{
+
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+      use mpas_kind_types, only : RKIND
+      use mpas_pool_routines, only : mpas_pool_type, mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
+      use ocn_equation_of_state_linear, only : ocn_equation_of_state_linear_density
+      use ocn_equation_of_state_jm, only : ocn_equation_of_state_jm_density
+      use ocn_equation_of_state_wright, only : ocn_equation_of_state_wright_density
+      use ocn_diagnostics_variables, only : zMid
+
       !-----------------------------------------------------------------
       ! Input variables
       !-----------------------------------------------------------------
@@ -251,6 +248,15 @@ contains
                            nCells, kDisplaced, displacement_type, density, err,       &
                            thermalExpansionCoeff, salineContractionCoeff, timeLevelIn)
       !{{{
+
+      use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+      use mpas_kind_types, only : RKIND
+      use mpas_pool_routines, only : mpas_pool_type, mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
+      use ocn_equation_of_state_linear, only : ocn_equation_of_state_linear_density
+      use ocn_equation_of_state_jm, only : ocn_equation_of_state_jm_density
+      use ocn_equation_of_state_wright, only : ocn_equation_of_state_wright_density
+      use ocn_diagnostics_variables, only : zMid
+
       !-----------------------------------------------------------------
       ! Input variables
       !-----------------------------------------------------------------
@@ -414,6 +420,17 @@ contains
 
    subroutine ocn_equation_of_state_init(domain, err)!{{{
 
+   use mpas_timer
+   use mpas_kind_types
+   use mpas_derived_types
+   use mpas_pool_routines
+   use ocn_equation_of_state_linear
+   use ocn_equation_of_state_jm
+   use ocn_equation_of_state_wright
+   use ocn_constants
+   use ocn_config
+   use ocn_diagnostics_variables
+   use mpas_log
    !--------------------------------------------------------------------
 
       !-----------------------------------------------------------------
@@ -486,6 +503,19 @@ contains
 !
 !-----------------------------------------------------------------------
     real (kind=RKIND) function ocn_freezing_temperature(salinity, pressure, inLandIceCavity)!{{{
+
+      use mpas_kind_types, only : RKIND
+      use ocn_config, only : &
+         config_land_ice_cavity_freezing_temperature_coeff_0, &
+         config_land_ice_cavity_freezing_temperature_coeff_s, &
+         config_land_ice_cavity_freezing_temperature_coeff_p, &
+         config_land_ice_cavity_freezing_temperature_coeff_ps, &
+         config_open_ocean_freezing_temperature_coeff_0, &
+         config_open_ocean_freezing_temperature_coeff_s, &
+         config_open_ocean_freezing_temperature_coeff_p, &
+         config_open_ocean_freezing_temperature_coeff_ps, &
+         config_open_ocean_freezing_temperature_coeff_mushy_az1_liq
+
       real (kind=RKIND), intent(in) :: salinity !< Input: Salinity value of water for freezing temperature
       real (kind=RKIND), intent(in) :: pressure !< Input: Pressure value for freezing temperature
       logical, intent(in) :: inLandIceCavity !< Input: flag indicating if the freezing temperature is computed
@@ -531,6 +561,15 @@ contains
 !
 !-----------------------------------------------------------------------
     real (kind=RKIND) function ocn_freezing_temperature_salinity_deriv(salinity, pressure, inLandIceCavity)!{{{
+
+      use mpas_kind_types, only : RKIND
+      use ocn_config, only :                                     &
+         config_land_ice_cavity_freezing_temperature_coeff_s,    &
+         config_land_ice_cavity_freezing_temperature_coeff_ps,   &
+         config_open_ocean_freezing_temperature_coeff_s,         &
+         config_open_ocean_freezing_temperature_coeff_ps,        &
+         config_open_ocean_freezing_temperature_coeff_mushy_az1_liq
+
       real (kind=RKIND), intent(in) :: salinity !< Input: Salinity value of water for freezing temperature
       real (kind=RKIND), intent(in) :: pressure !< Input: Pressure value for freezing temperature
       logical, intent(in) :: inLandIceCavity !< Input: flag indicating if the freezing temperature is computed

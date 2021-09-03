@@ -3210,7 +3210,8 @@ contains
 !-----------------------------------------------------------------------
    subroutine ocn_validate_state(domain, timeLevel)!{{{
 
-      use mpas_derived_types, only : StrKIND, MPAS_LOG_CRIT
+      use mpas_kind_types, only : StrKIND
+      use mpas_derived_types, only : MPAS_LOG_CRIT
       use mpas_pool_routines, only : domain_type, block_type, &
          mpas_pool_type, mpas_pool_get_subpool, mpas_pool_get_dimension, &
          mpas_pool_get_array
@@ -3813,7 +3814,7 @@ contains
 
    function ocn_build_log_filename(prefix, identifier) result(filename)!{{{
 
-      use mpas_derived_types, only : StrKIND
+      use mpas_kind_types, only : StrKIND
 
       implicit none
 
