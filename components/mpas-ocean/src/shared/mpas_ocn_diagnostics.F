@@ -3219,6 +3219,7 @@ contains
       use mpas_stream_manager, only :  &
          MPAS_stream_mgr_block_write,  &
          MPAS_stream_mgr_stream_exists 
+      use mpas_log, only: mpas_log_write
       use ocn_mesh, only :         &
          minLevelCell,             &
          maxLevelCell,             &

@@ -192,10 +192,10 @@ pgi-openacc:
 	"LDFLAGS_OPT = -O3 " \
 	"FFLAGS_ACC = -acc -Minfo=accel -ta=tesla:cc70,cc60 " \
 	"CFLAGS_ACC = -acc -Minfo=accel -ta=tesla:cc70,cc60 "  \
-	"FFLAGS_DEBUG = -O0 -g -Mbounds -Mchkptr -byteswapio -Mfree -Ktrap=divz,fp,inv,ovf -traceback" \
+	"FFLAGS_DEBUG = -O0 -g -byteswapio -Mfree -Ktrap=divz,fp,inv,ovf -traceback" \
 	"CFLAGS_DEBUG = -O0 -g -traceback" \
 	"CXXFLAGS_DEBUG = -O0 -g -traceback" \
-	"LDFLAGS_DEBUG = -O0 -g -Mbounds -Mchkptr -Ktrap=divz,fp,inv,ovf -traceback" \
+	"LDFLAGS_DEBUG = -O0 -g -Ktrap=divz,fp,inv,ovf -traceback" \
 	"FFLAGS_OMP = -mp" \
 	"CFLAGS_OMP = -mp" \
 	"PICFLAG = -fpic" \
