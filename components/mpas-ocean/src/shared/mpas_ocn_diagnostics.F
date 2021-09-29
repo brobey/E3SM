@@ -322,7 +322,7 @@ contains
       ! tracersSurfaceValue calc
       ! inputs: activeTracers, minLevelCell
       ! outputs: tracersSurfaceValue
-      !$acc serial present(tracersSurfaceValue, activeTracers, minLevelCell)
+!     !$acc serial present(tracersSurfaceValue, activeTracers, minLevelCell)
 #else
       !$omp parallel
       !$omp do schedule(runtime)
@@ -331,8 +331,8 @@ contains
          tracersSurfaceValue(:, iCell) = activeTracers(:, minLevelCell(iCell), iCell)
       end do
 #ifdef MPAS_OPENACC
-      !$acc end serial
-      !$acc update host(tracersSurfaceValue)
+!     !$acc end serial
+      !$acc update device(tracersSurfaceValue)
 #else
       !$omp end do
 #endif
@@ -457,8 +457,8 @@ contains
       !$acc update host(montgomeryPotential, pressure)
 
       if ( full_compute ) then
-         !$acc update host(RiTopOfCell, BruntVaisalaFreqTop)
-         !$acc update host(BruntVaisalaFreqTop)
+         !$acc update host(RiTopOfCell, &
+         !$acc             BruntVaisalaFreqTop)
 
          !$acc update host(tracersSurfaceLayerValue, &
          !$acc             indexSurfaceLayerDepth, &
