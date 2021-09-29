@@ -193,17 +193,17 @@ contains
       !!                                            landIceDraft (not on device)
 
       !$acc enter data copyin(layerThickness, normalVelocity)
-      !$acc update device (normalTransportVelocity, &
-      !$acc                normalGMBolusVelocity)
+ !    !$acc update device (normalTransportVelocity, &
+ !    !$acc                normalGMBolusVelocity)
 
-      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+ !    !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 
       !$acc enter data copyin(activeTracers, ssh)
       !$acc update device(tracersSurfaceValue)
 
-      if ( associated(frazilSurfacePressure) ) then
-         !$acc enter data copyin(frazilSurfacePressure)
-      endif
+!     if ( associated(frazilSurfacePressure) ) then
+!        !$acc enter data copyin(frazilSurfacePressure)
+!     endif
       if (landIcePressureOn) then
          !$acc enter data copyin(landIcePressure)
          !$acc enter data copyin(landIceDraft)
@@ -322,7 +322,7 @@ contains
       ! tracersSurfaceValue calc
       ! inputs: activeTracers, minLevelCell
       ! outputs: tracersSurfaceValue
-!     !$acc parallel loop !!!present(tracersSurfaceValue, activeTracers, minLevelCell)
+      !$acc serial present(tracersSurfaceValue, activeTracers, minLevelCell)
 #else
       !$omp parallel
       !$omp do schedule(runtime)
@@ -331,7 +331,8 @@ contains
          tracersSurfaceValue(:, iCell) = activeTracers(:, minLevelCell(iCell), iCell)
       end do
 #ifdef MPAS_OPENACC
-      !$acc update device(tracersSurfaceValue)
+      !$acc end serial
+      !$acc update host(tracersSurfaceValue)
 #else
       !$omp end do
 #endif
@@ -433,26 +434,26 @@ contains
       !! ocn_diagnostic_solve_ssh                :: pressureAdjustedSSH, (diagnostics array)
       !!                                            gradSSH (diagnostics array)
 
-      !$acc update host(layerThickEdge)
-      !$acc update host(relativeVorticity, circulation)
-      !$acc update host(vertTransportVelocityTop, &
-      !$acc             vertGMBolusVelocityTop, &
-      !$acc             relativeVorticityCell, &
-      !$acc             divergence, &
-      !$acc             kineticEnergyCell, &
-      !$acc             tangentialVelocity, &
-      !$acc             vertVelocityTop)
-      !$acc update host(normRelVortEdge, normPlanetVortEdge, &
-      !$acc             normalizedRelativeVorticityCell)
-      !$acc update host (surfacePressure)
-      !$acc update host(zMid, zTop)
+!     !$acc update host(layerThickEdge)
+!     !$acc update host(relativeVorticity, circulation)
+!     !$acc update host(vertTransportVelocityTop, &
+!     !$acc             vertGMBolusVelocityTop, &
+!     !$acc             relativeVorticityCell, &
+!     !$acc             divergence, &
+!     !$acc             kineticEnergyCell, &
+!     !$acc             tangentialVelocity, &
+!     !$acc             vertVelocityTop)
+!     !$acc update host(normRelVortEdge, normPlanetVortEdge, &
+!     !$acc             normalizedRelativeVorticityCell)
+!     !$acc update host (surfacePressure)
+!     !$acc update host(zMid, zTop)
       !$acc exit data copyout(ssh)
       !$acc update host(density, potentialDensity, displacedDensity)
       !$acc update host(thermExpCoeff,  &
       !$acc&            salineContractCoeff)
       !$acc update host(tracersSurfaceValue)
 
-      !$acc update host(normalVelocitySurfaceLayer)
+!     !$acc update host(normalVelocitySurfaceLayer)
       !$acc update host(montgomeryPotential, pressure)
 
       if ( full_compute ) then
@@ -466,7 +467,7 @@ contains
          !$acc             surfaceFluxAttenuationCoefficientRunoff)
       end if ! full_compute
 
-      !$acc exit data delete (atmosphericPressure, seaIcePressure)
+!     !$acc exit data delete (atmosphericPressure, seaIcePressure)
       if ( associated(frazilSurfacePressure) ) then
          !$acc exit data delete(frazilSurfacePressure)
       endif

@@ -280,6 +280,12 @@ module ocn_analysis_mode
       character (len=StrKIND), pointer :: config_dt
       logical, pointer :: config_write_output_on_startup
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        seaIcePressure, atmosphericPressure
+
+      real (kind=RKIND), dimension(:), pointer :: &
+        frazilSurfacePressure
+
       ierr = 0
 
       call mpas_pool_get_config(ocnConfigs, 'config_dt', config_dt)
@@ -301,7 +307,36 @@ module ocn_analysis_mode
          call mpas_pool_get_subpool(block_ptr % structs, 'mesh', meshPool)
          call mpas_pool_get_subpool(block_ptr % structs, 'scratch', scratchPool)
 
+         call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+         call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
+         call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
+
+#ifdef MPAS_OPENACC
+         !$acc update device (normalTransportVelocity, &
+         !$acc                normalGMBolusVelocity)
+         !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+         if ( associated(frazilSurfacePressure) ) then
+            !$acc enter data copyin(frazilSurfacePressure)
+         endif
+#endif
          call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
+#ifdef MPAS_OPENACC
+         !$acc update host(layerThickEdge)
+         !$acc update host(relativeVorticity, circulation)
+         !$acc update host(vertTransportVelocityTop, &
+         !$acc             vertGMBolusVelocityTop, &
+         !$acc             relativeVorticityCell, &
+         !$acc             divergence, &
+         !$acc             kineticEnergyCell, &
+         !$acc             tangentialVelocity, &
+         !$acc             vertVelocityTop)
+         !$acc update host(normRelVortEdge, normPlanetVortEdge, &
+         !$acc             normalizedRelativeVorticityCell)
+         !$acc update host (surfacePressure)
+         !$acc update host(zMid, zTop)
+         !$acc update host(normalVelocitySurfaceLayer)
+         !$acc exit data delete (atmosphericPressure, seaIcePressure)
+#endif
          block_ptr => block_ptr % next
       end do
 
