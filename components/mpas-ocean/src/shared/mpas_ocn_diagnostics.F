@@ -199,7 +199,7 @@ contains
 !     !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 
       !$acc enter data copyin(activeTracers, ssh)
-      !$acc update device(tracersSurfaceValue)
+!     !$acc update device(tracersSurfaceValue)
 
 !     if ( associated(frazilSurfacePressure) ) then
 !        !$acc enter data copyin(frazilSurfacePressure)
@@ -451,7 +451,7 @@ contains
       !$acc update host(density, potentialDensity, displacedDensity)
       !$acc update host(thermExpCoeff,  &
       !$acc&            salineContractCoeff)
-      !$acc update host(tracersSurfaceValue)
+!     !$acc update host(tracersSurfaceValue)
 
 !     !$acc update host(normalVelocitySurfaceLayer)
       !$acc update host(montgomeryPotential, pressure)

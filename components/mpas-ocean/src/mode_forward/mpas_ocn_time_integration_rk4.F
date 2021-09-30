@@ -691,6 +691,7 @@ module ocn_time_integration_rk4
          !$acc update device (normalTransportVelocity, &
          !$acc                normalGMBolusVelocity)
          !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+         !$acc update device(tracersSurfaceValue)
          if ( associated(frazilSurfacePressure) ) then
             !$acc enter data copyin(frazilSurfacePressure)
          endif
@@ -710,6 +711,7 @@ module ocn_time_integration_rk4
          !$acc             normalizedRelativeVorticityCell)
          !$acc update host (surfacePressure)
          !$acc update host(zMid, zTop)
+         !$acc update host(tracersSurfaceValue)
          !$acc update host(normalVelocitySurfaceLayer)
          !$acc exit data delete (atmosphericPressure, seaIcePressure)
          !$acc exit data delete(layerThicknessNew, normalVelocityNew)
@@ -1234,6 +1236,7 @@ module ocn_time_integration_rk4
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+      !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
       endif
@@ -1253,6 +1256,7 @@ module ocn_time_integration_rk4
       !$acc             normalizedRelativeVorticityCell)
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
+      !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
       !$acc exit data delete(layerThicknessCur, normalVelocityCur)
@@ -1485,6 +1489,7 @@ module ocn_time_integration_rk4
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+      !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
       endif
@@ -1504,6 +1509,7 @@ module ocn_time_integration_rk4
       !$acc             normalizedRelativeVorticityCell)
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
+      !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
       !$acc exit data delete (layerThicknessNew, normalVelocityNew)

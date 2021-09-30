@@ -152,6 +152,7 @@ contains
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+      !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
       endif
@@ -171,6 +172,7 @@ contains
       !$acc             normalizedRelativeVorticityCell)
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
+      !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
       !$acc exit data delete(layerThickness, normalVelocity)
