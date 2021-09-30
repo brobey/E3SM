@@ -286,6 +286,9 @@ module ocn_analysis_mode
       real (kind=RKIND), dimension(:), pointer :: &
         frazilSurfacePressure
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        layerThickness, normalVelocity
+
       ierr = 0
 
       call mpas_pool_get_config(ocnConfigs, 'config_dt', config_dt)
@@ -311,7 +314,11 @@ module ocn_analysis_mode
          call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
          call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
 
+         call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 1)
+         call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
+
 #ifdef MPAS_OPENACC
+         !$acc enter data copyin(layerThickness, normalVelocity)
          !$acc update device (normalTransportVelocity, &
          !$acc                normalGMBolusVelocity)
          !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -336,6 +343,7 @@ module ocn_analysis_mode
          !$acc update host(zMid, zTop)
          !$acc update host(normalVelocitySurfaceLayer)
          !$acc exit data delete (atmosphericPressure, seaIcePressure)
+         !$acc exit data delete (layerThickness, normalVelocity)
 #endif
          block_ptr => block_ptr % next
       end do

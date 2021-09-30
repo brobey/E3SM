@@ -192,11 +192,11 @@ contains
       !! ocn_diagnostic_solve_ssh                :: ssh, (not on device)
       !!                                            landIceDraft (not on device)
 
-      !$acc enter data copyin(layerThickness, normalVelocity)
- !    !$acc update device (normalTransportVelocity, &
- !    !$acc                normalGMBolusVelocity)
+!     !$acc enter data copyin(layerThickness, normalVelocity)
+!     !$acc update device (normalTransportVelocity, &
+!     !$acc                normalGMBolusVelocity)
 
- !    !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+!     !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 
       !$acc enter data copyin(activeTracers, ssh)
       !$acc update device(tracersSurfaceValue)
@@ -476,8 +476,9 @@ contains
          !$acc exit data delete(landIceDraft)
       endif
 
-      !$acc exit data delete (layerThickness, normalVelocity, &
-      !$acc                   activeTracers)
+      !$acc exit data delete (activeTracers)
+!     !$acc exit data delete (layerThickness, normalVelocity, &
+!     !$acc                   activeTracers)
 #endif
 
       call mpas_timer_stop('diagnostic solve')

@@ -687,6 +687,7 @@ module ocn_time_integration_rk4
          call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
 
 #ifdef MPAS_OPENACC
+         !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
          !$acc update device (normalTransportVelocity, &
          !$acc                normalGMBolusVelocity)
          !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -711,6 +712,7 @@ module ocn_time_integration_rk4
          !$acc update host(zMid, zTop)
          !$acc update host(normalVelocitySurfaceLayer)
          !$acc exit data delete (atmosphericPressure, seaIcePressure)
+         !$acc exit data delete(layerThicknessNew, normalVelocityNew)
 #endif
 
          ! Update the effective desnity in land ice if we're coupling to land ice
@@ -1228,6 +1230,7 @@ module ocn_time_integration_rk4
       call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
 
 #ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThicknessCur, normalVelocityCur)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -1252,6 +1255,7 @@ module ocn_time_integration_rk4
       !$acc update host(zMid, zTop)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
+      !$acc exit data delete(layerThicknessCur, normalVelocityCur)
 #endif
 
       ! ------------------------------------------------------------------
@@ -1477,6 +1481,7 @@ module ocn_time_integration_rk4
       end do
 
 #ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -1501,6 +1506,7 @@ module ocn_time_integration_rk4
       !$acc update host(zMid, zTop)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
+      !$acc exit data delete (layerThicknessNew, normalVelocityNew)
 #endif
 
       call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, scratchPool, err, 2)

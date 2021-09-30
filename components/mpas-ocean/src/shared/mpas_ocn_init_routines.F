@@ -148,6 +148,7 @@ contains
       end if
 
 #ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThickness, normalVelocity)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -172,6 +173,7 @@ contains
       !$acc update host(zMid, zTop)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
+      !$acc exit data delete(layerThickness, normalVelocity)
 #endif
 
       layerThickness(:, nCells+1) = 0.0_RKIND

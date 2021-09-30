@@ -2760,6 +2760,7 @@ module ocn_time_integration_si
             ! layerThickEdge, density, pressure, and SSH
             ! in this diagnostics solve.
 #ifdef MPAS_OPENACC
+            !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
             !$acc update device (normalTransportVelocity, &
             !$acc                normalGMBolusVelocity)
             !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -2786,6 +2787,7 @@ module ocn_time_integration_si
             !$acc update host(zMid, zTop)
             !$acc update host(normalVelocitySurfaceLayer)
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
+            !$acc exit data delete(layerThicknessNew, normalVelocityNew)
 #endif
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3033,6 +3035,7 @@ module ocn_time_integration_si
       call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
 
 #ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -3058,6 +3061,7 @@ module ocn_time_integration_si
       !$acc update host(zMid, zTop)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
+      !$acc exit data delete(layerThicknessNew, normalVelocityNew)
 #endif
 
       call mpas_dmpar_field_halo_exch(domain, 'surfaceFrictionVelocity')
@@ -3147,6 +3151,7 @@ module ocn_time_integration_si
       end if
 
 #ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -3172,6 +3177,7 @@ module ocn_time_integration_si
       !$acc update host(zMid, zTop)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
+      !$acc exit data delete(layerThicknessNew, normalVelocityNew)
 #endif
 
       ! Update the effective desnity in land ice if we're coupling to
