@@ -117,6 +117,8 @@ contains
       real (kind=RKIND), dimension(:), pointer :: &
         frazilSurfacePressure
 
+      real (kind=RKIND), dimension(:), pointer :: ssh
+
       type (mpas_pool_iterator_type) :: groupItr
 
       call mpas_pool_get_dimension(block % dimensions, 'nCells', nCells)
@@ -135,6 +137,7 @@ contains
 
       call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
       call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 1)
+      call mpas_pool_get_array(statePool, 'ssh', ssh, 1)
 
       call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
       call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
@@ -152,6 +155,7 @@ contains
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+      !$acc enter data copyin(ssh)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -172,6 +176,7 @@ contains
       !$acc             normalizedRelativeVorticityCell)
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
+      !$acc exit data copyout(ssh)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)

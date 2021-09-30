@@ -691,6 +691,7 @@ module ocn_time_integration_rk4
          !$acc update device (normalTransportVelocity, &
          !$acc                normalGMBolusVelocity)
          !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+         !$acc enter data copyin(sshNew)
          !$acc update device(tracersSurfaceValue)
          if ( associated(frazilSurfacePressure) ) then
             !$acc enter data copyin(frazilSurfacePressure)
@@ -711,6 +712,7 @@ module ocn_time_integration_rk4
          !$acc             normalizedRelativeVorticityCell)
          !$acc update host (surfacePressure)
          !$acc update host(zMid, zTop)
+         !$acc exit data copyout(sshNew)
          !$acc update host(tracersSurfaceValue)
          !$acc update host(normalVelocitySurfaceLayer)
          !$acc exit data delete (atmosphericPressure, seaIcePressure)
@@ -1108,6 +1110,8 @@ module ocn_time_integration_rk4
       real (kind=RKIND), dimension(:), pointer :: &
         frazilSurfacePressure
 
+      real (kind=RKIND), dimension(:), pointer :: sshCur
+
       err = 0
 
       call mpas_pool_get_config(block % configs, 'config_prescribe_velocity', config_prescribe_velocity)
@@ -1131,6 +1135,7 @@ module ocn_time_integration_rk4
 
       call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocityCur, 1)
       call mpas_pool_get_array(statePool, 'layerThickness', layerThicknessCur, 1)
+      call mpas_pool_get_array(statePool, 'ssh', sshCur, 1)
       call mpas_pool_get_array(statePool, 'lowFreqDivergence', lowFreqDivergenceCur, 1)
 
       call mpas_pool_get_array(provisStatePool, 'normalVelocity', normalVelocityProvis, 1)
@@ -1236,6 +1241,7 @@ module ocn_time_integration_rk4
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+      !$acc enter data copyin(sshCur)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -1256,6 +1262,7 @@ module ocn_time_integration_rk4
       !$acc             normalizedRelativeVorticityCell)
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
+      !$acc exit data copyout(sshCur)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
@@ -1440,6 +1447,8 @@ module ocn_time_integration_rk4
       real (kind=RKIND), dimension(:), pointer :: &
         frazilSurfacePressure
 
+      real (kind=RKIND), dimension(:), pointer :: sshNew
+
       err = 0
 
       call mpas_pool_get_config(block % configs, 'config_use_GM', config_use_GM)
@@ -1456,6 +1465,7 @@ module ocn_time_integration_rk4
 
       call mpas_pool_get_array(statePool, 'layerThickness', layerThicknessNew, 2)
       call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocityNew, 2)
+      call mpas_pool_get_array(statePool, 'ssh', sshNew, 2)
 
       call mpas_pool_get_dimension(tracersPool, 'index_temperature', indexTemperature)
       call mpas_pool_get_dimension(tracersPool, 'index_salinity', indexSalinity)
@@ -1489,6 +1499,7 @@ module ocn_time_integration_rk4
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+      !$acc enter data copyin(sshNew)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -1509,6 +1520,7 @@ module ocn_time_integration_rk4
       !$acc             normalizedRelativeVorticityCell)
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
+      !$acc exit data copyout(sshNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)

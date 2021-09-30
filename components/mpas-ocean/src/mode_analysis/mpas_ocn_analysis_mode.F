@@ -289,6 +289,8 @@ module ocn_analysis_mode
       real (kind=RKIND), dimension(:), pointer :: &
         layerThickness, normalVelocity
 
+      real (kind=RKIND), dimension(:), pointer :: ssh
+
       ierr = 0
 
       call mpas_pool_get_config(ocnConfigs, 'config_dt', config_dt)
@@ -316,12 +318,14 @@ module ocn_analysis_mode
 
          call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 1)
          call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
+         call mpas_pool_get_array(statePool, 'ssh', ssh, 1)
 
 #ifdef MPAS_OPENACC
          !$acc enter data copyin(layerThickness, normalVelocity)
          !$acc update device (normalTransportVelocity, &
          !$acc                normalGMBolusVelocity)
          !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+         !$acc enter data copyin(ssh)
          !$acc update device(tracersSurfaceValue)
          if ( associated(frazilSurfacePressure) ) then
             !$acc enter data copyin(frazilSurfacePressure)
@@ -342,6 +346,7 @@ module ocn_analysis_mode
          !$acc             normalizedRelativeVorticityCell)
          !$acc update host (surfacePressure)
          !$acc update host(zMid, zTop)
+         !$acc exit data copyout(ssh)
          !$acc update host(tracersSurfaceValue)
          !$acc update host(normalVelocitySurfaceLayer)
          !$acc exit data delete (atmosphericPressure, seaIcePressure)
