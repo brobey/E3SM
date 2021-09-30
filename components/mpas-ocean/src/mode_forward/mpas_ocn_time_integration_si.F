@@ -2765,6 +2765,7 @@ module ocn_time_integration_si
             !$acc                normalGMBolusVelocity)
             !$acc enter data copyin(atmosphericPressure, seaIcePressure)
             !$acc enter data copyin(sshNew)
+            !$acc enter data copyin(tracersGroupNew)
             !$acc update device(tracersSurfaceValue)
             if ( associated(frazilSurfacePressure) ) then
                !$acc enter data copyin(frazilSurfacePressure)
@@ -2788,6 +2789,7 @@ module ocn_time_integration_si
             !$acc update host (surfacePressure)
             !$acc update host(zMid, zTop)
             !$acc exit data copyout(sshNew)
+            !$acc exit data delete(tracersGroupNew)
             !$acc update host(tracersSurfaceValue)
             !$acc update host(normalVelocitySurfaceLayer)
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
@@ -3044,6 +3046,7 @@ module ocn_time_integration_si
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(sshNew)
+      !$acc enter data copyin(tracersGroupNew)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -3066,6 +3069,7 @@ module ocn_time_integration_si
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshNew)
+      !$acc exit data delete(tracersGroupNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
@@ -3164,6 +3168,7 @@ module ocn_time_integration_si
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(sshNew)
+      !$acc enter data copyin(tracersGroupNew)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -3186,6 +3191,7 @@ module ocn_time_integration_si
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshNew)
+      !$acc exit data delete(tracersGroupNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)

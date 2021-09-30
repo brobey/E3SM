@@ -190,6 +190,8 @@ module ocn_time_integration_rk4
       real (kind=RKIND), dimension(:), pointer :: &
         frazilSurfacePressure
 
+      real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersNew
+
       ! Get config options
       call mpas_pool_get_config(domain % configs, 'config_mom_del4', config_mom_del4)
       call mpas_pool_get_config(domain % configs, 'config_filter_btr_mode', config_filter_btr_mode)
@@ -641,6 +643,7 @@ module ocn_time_integration_rk4
          call mpas_pool_get_array(forcingPool, 'tidalInputMask', tidalInputMask)
          call mpas_pool_get_array(forcingPool, 'tidalBCValue', tidalBCValue)
 
+         call mpas_pool_get_array(tracersPool, 'activeTracers',activeTracersNew, 2)
 
          if (config_prescribe_velocity) then
             !$omp parallel
@@ -692,6 +695,7 @@ module ocn_time_integration_rk4
          !$acc                normalGMBolusVelocity)
          !$acc enter data copyin(atmosphericPressure, seaIcePressure)
          !$acc enter data copyin(sshNew)
+         !$acc enter data copyin(activeTracersNew)
          !$acc update device(tracersSurfaceValue)
          if ( associated(frazilSurfacePressure) ) then
             !$acc enter data copyin(frazilSurfacePressure)
@@ -713,6 +717,7 @@ module ocn_time_integration_rk4
          !$acc update host (surfacePressure)
          !$acc update host(zMid, zTop)
          !$acc exit data copyout(sshNew)
+         !$acc exit data delete(activeTracersNew)
          !$acc update host(tracersSurfaceValue)
          !$acc update host(normalVelocitySurfaceLayer)
          !$acc exit data delete (atmosphericPressure, seaIcePressure)
@@ -1112,6 +1117,8 @@ module ocn_time_integration_rk4
 
       real (kind=RKIND), dimension(:), pointer :: sshCur
 
+      real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersCur
+
       err = 0
 
       call mpas_pool_get_config(block % configs, 'config_prescribe_velocity', config_prescribe_velocity)
@@ -1149,6 +1156,8 @@ module ocn_time_integration_rk4
       call mpas_pool_get_array(meshPool, 'minLevelCell', minLevelCell)
       call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
       call mpas_pool_get_array(meshPool, 'maxLevelEdgeTop', maxLevelEdgeTop)
+
+      call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracersCur, 1)
 
       !$omp parallel
       !$omp do schedule(runtime) private(k)
@@ -1242,6 +1251,7 @@ module ocn_time_integration_rk4
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(sshCur)
+      !$acc enter data copyin(activeTracersCur)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -1263,6 +1273,7 @@ module ocn_time_integration_rk4
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshCur)
+      !$acc exit data delete(activeTracersCur)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
@@ -1449,6 +1460,8 @@ module ocn_time_integration_rk4
 
       real (kind=RKIND), dimension(:), pointer :: sshNew
 
+      real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersNew
+
       err = 0
 
       call mpas_pool_get_config(block % configs, 'config_use_GM', config_use_GM)
@@ -1469,6 +1482,7 @@ module ocn_time_integration_rk4
 
       call mpas_pool_get_dimension(tracersPool, 'index_temperature', indexTemperature)
       call mpas_pool_get_dimension(tracersPool, 'index_salinity', indexSalinity)
+      call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracersNew, 2)
 
       call mpas_pool_get_array(meshPool, 'minLevelCell', minLevelCell)
       call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
@@ -1500,6 +1514,7 @@ module ocn_time_integration_rk4
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(sshNew)
+      !$acc enter data copyin(activeTracersNew)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -1521,6 +1536,7 @@ module ocn_time_integration_rk4
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshNew)
+      !$acc exit data delete(activeTracersNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)

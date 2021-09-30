@@ -119,6 +119,8 @@ contains
 
       real (kind=RKIND), dimension(:), pointer :: ssh
 
+      real (kind=RKIND), dimension(:,:,:), pointer :: activeTracers
+
       type (mpas_pool_iterator_type) :: groupItr
 
       call mpas_pool_get_dimension(block % dimensions, 'nCells', nCells)
@@ -143,6 +145,8 @@ contains
       call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
       call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
 
+      call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracers, 1)
+
       if (.not. config_do_restart) then
          do iCell=1,nCells
             boundaryLayerDepth(iCell) = layerThickness(minLevelCell(iCell), iCell) * 0.5_RKIND
@@ -156,6 +160,7 @@ contains
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(ssh)
+      !$acc enter data copyin(activeTracers)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -177,6 +182,7 @@ contains
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(ssh)
+      !$acc exit data delete(activeTracers)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)

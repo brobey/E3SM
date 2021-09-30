@@ -199,7 +199,7 @@ contains
 !     !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 
 !     !$acc enter data copyin(activeTracers, ssh)
-      !$acc enter data copyin(activeTracers)
+!     !$acc enter data copyin(activeTracers)
 !     !$acc update device(tracersSurfaceValue)
 
 !     if ( associated(frazilSurfacePressure) ) then
@@ -447,7 +447,7 @@ contains
 !     !$acc update host(normRelVortEdge, normPlanetVortEdge, &
 !     !$acc             normalizedRelativeVorticityCell)
 !     !$acc update host (surfacePressure)
-!     !$acc update host(zMid, zTop)
+     !$acc update host(zMid, zTop)
 !     !$acc exit data copyout(ssh)
       !$acc update host(density, potentialDensity, displacedDensity)
       !$acc update host(thermExpCoeff,  &
@@ -477,7 +477,7 @@ contains
          !$acc exit data delete(landIceDraft)
       endif
 
-      !$acc exit data delete (activeTracers)
+!     !$acc exit data delete (activeTracers)
 !     !$acc exit data delete (layerThickness, normalVelocity, &
 !     !$acc                   activeTracers)
 #endif

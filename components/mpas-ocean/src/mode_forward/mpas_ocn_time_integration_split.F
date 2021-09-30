@@ -254,6 +254,8 @@ module ocn_time_integration_split
       real (kind=RKIND), dimension(:), pointer :: &
         frazilSurfacePressure
 
+      real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersNew
+
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
       ! indexSSHGradientZonal, indexSSHGradientMeridional
@@ -361,6 +363,8 @@ module ocn_time_integration_split
                                           highFreqThicknessTend)
       call mpas_pool_get_array(tendPool, 'lowFreqDivergence', &
                                           lowFreqDivergenceTend)
+
+      call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracersNew, 2)
 
       ! Initialize * variables that are used to compute baroclinic
       ! tendencies below.
@@ -1660,6 +1664,7 @@ module ocn_time_integration_split
             !$acc                normalGMBolusVelocity)
             !$acc enter data copyin(atmosphericPressure, seaIcePressure)
             !$acc enter data copyin(sshNew)
+            !$acc enter data copyin(activeTracersNew)
             !$acc update device(tracersSurfaceValue)
             if ( associated(frazilSurfacePressure) ) then
                !$acc enter data copyin(frazilSurfacePressure)
@@ -1683,6 +1688,7 @@ module ocn_time_integration_split
             !$acc update host (surfacePressure)
             !$acc update host(zMid, zTop)
             !$acc exit data copyout(sshNew)
+            !$acc exit data delete(activeTracersNew)
             !$acc update host(tracersSurfaceValue)
             !$acc update host(normalVelocitySurfaceLayer)
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
@@ -1935,6 +1941,7 @@ module ocn_time_integration_split
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(sshNew)
+      !$acc enter data copyin(activeTracersNew)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -1957,6 +1964,7 @@ module ocn_time_integration_split
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshNew)
+      !$acc exit data delete(activeTracersNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
@@ -2032,6 +2040,7 @@ module ocn_time_integration_split
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(sshNew)
+      !$acc enter data copyin(activeTracersNew)
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
@@ -2090,6 +2099,7 @@ module ocn_time_integration_split
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshNew)
+      !$acc exit data delete(activeTracersNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
