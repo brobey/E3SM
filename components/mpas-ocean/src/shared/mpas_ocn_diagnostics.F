@@ -469,9 +469,9 @@ contains
       end if ! full_compute
 
 !     !$acc exit data delete (atmosphericPressure, seaIcePressure)
-      if ( associated(frazilSurfacePressure) ) then
-         !$acc exit data delete(frazilSurfacePressure)
-      endif
+!     if ( associated(frazilSurfacePressure) ) then
+!        !$acc exit data delete(frazilSurfacePressure)
+!     endif
 !     if (landIcePressureOn) then
 !        !$acc exit data delete(landIcePressure)
 !        !$acc exit data delete(landIceDraft)

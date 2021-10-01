@@ -342,31 +342,6 @@ module ocn_analysis_mode
             !$acc enter data copyin(frazilSurfacePressure)
          endif
          if (landIcePressureOn) then
-            !$acc enter data copyin(landIcePressure)
-            !$acc enter data copyin(landIceDraft)
-         endif
-#endif
-         call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
-#ifdef MPAS_OPENACC
-         !$acc update host(layerThickEdge)
-         !$acc update host(relativeVorticity, circulation)
-         !$acc update host(vertTransportVelocityTop, &
-         !$acc             vertGMBolusVelocityTop, &
-         !$acc             relativeVorticityCell, &
-         !$acc             divergence, &
-         !$acc             kineticEnergyCell, &
-         !$acc             tangentialVelocity, &
-         !$acc             vertVelocityTop)
-         !$acc update host(normRelVortEdge, normPlanetVortEdge, &
-         !$acc             normalizedRelativeVorticityCell)
-         !$acc update host (surfacePressure)
-         !$acc update host(zMid, zTop)
-         !$acc exit data copyout(ssh)
-         !$acc exit data delete(activeTracers)
-         !$acc update host(tracersSurfaceValue)
-         !$acc update host(normalVelocitySurfaceLayer)
-         !$acc exit data delete (atmosphericPressure, seaIcePressure)
-         if (landIcePressureOn) then
             !$acc exit data delete(landIcePressure)
             !$acc exit data delete(landIceDraft)
          endif

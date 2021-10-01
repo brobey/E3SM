@@ -1702,6 +1702,9 @@ module ocn_time_integration_split
             !$acc update host(tracersSurfaceValue)
             !$acc update host(normalVelocitySurfaceLayer)
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
+            if ( associated(frazilSurfacePressure) ) then
+               !$acc exit data delete(frazilSurfacePressure)
+            endif
             if (landIcePressureOn) then
                !$acc exit data delete(landIcePressure)
                !$acc exit data delete(landIceDraft)
@@ -1986,6 +1989,9 @@ module ocn_time_integration_split
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
+      if ( associated(frazilSurfacePressure) ) then
+         !$acc exit data delete(frazilSurfacePressure)
+      endif
       if (landIcePressureOn) then
          !$acc exit data delete(landIcePressure)
          !$acc exit data delete(landIceDraft)
@@ -2136,6 +2142,9 @@ module ocn_time_integration_split
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
       !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+      if ( associated(frazilSurfacePressure) ) then
+         !$acc exit data delete(frazilSurfacePressure)
+      endif
       if (landIcePressureOn) then
          !$acc exit data delete(landIcePressure)
          !$acc exit data delete(landIceDraft)
