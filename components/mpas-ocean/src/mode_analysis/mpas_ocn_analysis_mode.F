@@ -39,6 +39,7 @@ module ocn_analysis_mode
    use ocn_constants
    use ocn_config
    use ocn_mesh
+   use ocn_surface_land_ice_fluxes
 
    implicit none
    private
@@ -284,7 +285,7 @@ module ocn_analysis_mode
         seaIcePressure, atmosphericPressure
 
       real (kind=RKIND), dimension(:), pointer :: &
-        frazilSurfacePressure
+        frazilSurfacePressure, landIcePressure, landIceDraft
 
       real (kind=RKIND), dimension(:), pointer :: &
         layerThickness, normalVelocity
@@ -318,6 +319,11 @@ module ocn_analysis_mode
          call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
          call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
 
+         if (landIcePressureOn) then 
+            call mpas_pool_get_array(forcingPool, 'landIcePressure', landIcePressure)
+            call mpas_pool_get_array(forcingPool, 'landIceDraft', landIceDraft)
+         endif
+
          call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 1)
          call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
          call mpas_pool_get_array(statePool, 'ssh', ssh, 1)
@@ -334,6 +340,10 @@ module ocn_analysis_mode
          !$acc update device(tracersSurfaceValue)
          if ( associated(frazilSurfacePressure) ) then
             !$acc enter data copyin(frazilSurfacePressure)
+         endif
+         if (landIcePressureOn) then
+            !$acc enter data copyin(landIcePressure)
+            !$acc enter data copyin(landIceDraft)
          endif
 #endif
          call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
@@ -356,6 +366,10 @@ module ocn_analysis_mode
          !$acc update host(tracersSurfaceValue)
          !$acc update host(normalVelocitySurfaceLayer)
          !$acc exit data delete (atmosphericPressure, seaIcePressure)
+         if (landIcePressureOn) then
+            !$acc exit data delete(landIcePressure)
+            !$acc exit data delete(landIceDraft)
+         endif
          !$acc exit data delete (layerThickness, normalVelocity)
 #endif
          block_ptr => block_ptr % next

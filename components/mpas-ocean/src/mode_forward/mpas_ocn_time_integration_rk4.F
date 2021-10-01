@@ -40,6 +40,7 @@ module ocn_time_integration_rk4
    use ocn_wetting_drying
 
    use ocn_effective_density_in_land_ice
+   use ocn_surface_land_ice_fluxes
 
    implicit none
    private
@@ -188,7 +189,7 @@ module ocn_time_integration_rk4
         seaIcePressure, atmosphericPressure
 
       real (kind=RKIND), dimension(:), pointer :: &
-        frazilSurfacePressure
+        frazilSurfacePressure, landIcePressure, landIceDraft
 
       real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersNew
 
@@ -689,6 +690,11 @@ module ocn_time_integration_rk4
          call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
          call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
 
+         if (landIcePressureOn) then
+            call mpas_pool_get_array(forcingPool, 'landIcePressure', landIcePressure)
+            call mpas_pool_get_array(forcingPool, 'landIceDraft', landIceDraft)
+         endif
+
 #ifdef MPAS_OPENACC
          !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
          !$acc update device (normalTransportVelocity, &
@@ -700,8 +706,16 @@ module ocn_time_integration_rk4
          if ( associated(frazilSurfacePressure) ) then
             !$acc enter data copyin(frazilSurfacePressure)
          endif
+         if (landIcePressureOn) then
+            !$acc enter data copyin(landIcePressure)
+            !$acc enter data copyin(landIceDraft)
+         endif
 #endif
          call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
+
+         ! Update the effective desnity in land ice if we're coupling to land ice
+         call ocn_effective_density_in_land_ice_update(meshPool, forcingPool, statePool, err)
+
 #ifdef MPAS_OPENACC
          !$acc update host(layerThickEdge)
          !$acc update host(relativeVorticity, circulation)
@@ -721,11 +735,12 @@ module ocn_time_integration_rk4
          !$acc update host(tracersSurfaceValue)
          !$acc update host(normalVelocitySurfaceLayer)
          !$acc exit data delete (atmosphericPressure, seaIcePressure)
+         if (landIcePressureOn) then
+            !$acc exit data delete(landIcePressure)
+            !$acc exit data delete(landIceDraft)
+         endif
          !$acc exit data delete(layerThicknessNew, normalVelocityNew)
 #endif
-
-         ! Update the effective desnity in land ice if we're coupling to land ice
-         call ocn_effective_density_in_land_ice_update(meshPool, forcingPool, statePool, err)
 
          ! ------------------------------------------------------------------
          ! Accumulating various parameterizations of the transport velocity
@@ -1113,7 +1128,7 @@ module ocn_time_integration_rk4
         seaIcePressure, atmosphericPressure
 
       real (kind=RKIND), dimension(:), pointer :: &
-        frazilSurfacePressure
+        frazilSurfacePressure, landIcePressure, landIceDraft
 
       real (kind=RKIND), dimension(:), pointer :: sshCur
 
@@ -1245,6 +1260,11 @@ module ocn_time_integration_rk4
       call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
       call mpas_pool_get_array(forcingPool, 'frazilSurfacePressure', frazilSurfacePressure)
 
+      if (landIcePressureOn) then
+         call mpas_pool_get_array(forcingPool, 'landIcePressure', landIcePressure)
+         call mpas_pool_get_array(forcingPool, 'landIceDraft', landIceDraft)
+      endif
+
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(layerThicknessCur, normalVelocityCur)
       !$acc update device (normalTransportVelocity, &
@@ -1255,6 +1275,10 @@ module ocn_time_integration_rk4
       !$acc update device(tracersSurfaceValue)
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
+      endif
+      if (landIcePressureOn) then
+         !$acc enter data copyin(landIcePressure)
+         !$acc enter data copyin(landIceDraft)
       endif
 #endif
       call ocn_diagnostic_solve(dt, provisStatePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
@@ -1277,6 +1301,10 @@ module ocn_time_integration_rk4
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
+      if (landIcePressureOn) then
+         !$acc exit data delete(landIcePressure)
+         !$acc exit data delete(landIceDraft)
+      endif
       !$acc exit data delete(layerThicknessCur, normalVelocityCur)
 #endif
 
@@ -1456,7 +1484,7 @@ module ocn_time_integration_rk4
         seaIcePressure, atmosphericPressure
 
       real (kind=RKIND), dimension(:), pointer :: &
-        frazilSurfacePressure
+        frazilSurfacePressure, landIcePressure, landIceDraft
 
       real (kind=RKIND), dimension(:), pointer :: sshNew
 
@@ -1490,6 +1518,11 @@ module ocn_time_integration_rk4
       call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
       call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
 
+      if (landIcePressureOn) then
+          call mpas_pool_get_array(forcingPool, 'landIcePressure', landIcePressure)
+          call mpas_pool_get_array(forcingPool, 'landIceDraft', landIceDraft)
+      endif
+
       call mpas_pool_begin_iteration(tracersPool)
       do while ( mpas_pool_get_next_member(tracersPool, groupItr) )
          if ( groupItr % memberType == MPAS_POOL_FIELD ) then
@@ -1519,6 +1552,10 @@ module ocn_time_integration_rk4
       if ( associated(frazilSurfacePressure) ) then
          !$acc enter data copyin(frazilSurfacePressure)
       endif
+      if (landIcePressureOn) then
+         !$acc enter data copyin(landIcePressure)
+         !$acc enter data copyin(landIceDraft)
+      endif
 #endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
 #ifdef MPAS_OPENACC
@@ -1540,6 +1577,10 @@ module ocn_time_integration_rk4
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
+      if (landIcePressureOn) then
+         !$acc exit data delete(landIcePressure)
+         !$acc exit data delete(landIceDraft)
+      endif
       !$acc exit data delete (layerThicknessNew, normalVelocityNew)
 #endif
 

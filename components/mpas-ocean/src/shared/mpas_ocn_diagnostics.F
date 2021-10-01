@@ -205,10 +205,10 @@ contains
 !     if ( associated(frazilSurfacePressure) ) then
 !        !$acc enter data copyin(frazilSurfacePressure)
 !     endif
-      if (landIcePressureOn) then
-         !$acc enter data copyin(landIcePressure)
-         !$acc enter data copyin(landIceDraft)
-      endif
+!     if (landIcePressureOn) then
+!        !$acc enter data copyin(landIcePressure)
+!        !$acc enter data copyin(landIceDraft)
+!     endif
 #endif
 
       ! inputs: layerThickness, normalVelocity
@@ -447,7 +447,7 @@ contains
 !     !$acc update host(normRelVortEdge, normPlanetVortEdge, &
 !     !$acc             normalizedRelativeVorticityCell)
 !     !$acc update host (surfacePressure)
-     !$acc update host(zMid, zTop)
+!     !$acc update host(zMid, zTop)
 !     !$acc exit data copyout(ssh)
       !$acc update host(density, potentialDensity, displacedDensity)
       !$acc update host(thermExpCoeff,  &
@@ -472,10 +472,10 @@ contains
       if ( associated(frazilSurfacePressure) ) then
          !$acc exit data delete(frazilSurfacePressure)
       endif
-      if (landIcePressureOn) then
-         !$acc exit data delete(landIcePressure)
-         !$acc exit data delete(landIceDraft)
-      endif
+!     if (landIcePressureOn) then
+!        !$acc exit data delete(landIcePressure)
+!        !$acc exit data delete(landIceDraft)
+!     endif
 
 !     !$acc exit data delete (activeTracers)
 !     !$acc exit data delete (layerThickness, normalVelocity, &
