@@ -149,7 +149,7 @@ contains
       allocate(effectiveDensityScratch(nCells))
 
 #ifdef MPAS_OPENACC
-      !$acc parallel present(ssh)
+      !$acc parallel present(ssh, landIcePressure)
 #endif
 
 #ifdef MPAS_OPENACC
