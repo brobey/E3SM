@@ -1617,10 +1617,43 @@ module ocn_time_integration_split
             !$omp end do
             !$omp end parallel
 
+#ifdef MPAS_OPENACC
+            !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+            !$acc update device (normalTransportVelocity, &
+            !$acc                normalGMBolusVelocity)
+            !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+            !$acc enter data copyin(sshNew)
+            !$acc enter data copyin(activeTracersNew)
+            !$acc update device(tracersSurfaceValue)
+            if ( associated(frazilSurfacePressure) ) then
+               !$acc enter data copyin(frazilSurfacePressure)
+            endif
+            if (landIcePressureOn) then
+               !$acc enter data copyin(landIcePressure)
+               !$acc enter data copyin(landIceDraft)
+            endif
+            !$acc enter data copyin(normalBaroclinicVelocityNew)
+            !$acc enter data copyin(normalBarotropicVelocityNew)
+            !$acc enter data copyin(highFreqThicknessNew)
+            !$acc enter data copyin(highFreqThicknessCur)
+            !$acc enter data copyin(lowFreqDivergenceNew)
+            !$acc enter data copyin(lowFreqDivergenceCur)
+            !$acc enter data copyin(lowFreqDivergenceTend)
+#endif
+
             if (config_use_freq_filtered_thickness) then
 
+#ifdef MPAS_OPENACC
+               !$acc parallel loop present(minLevelCell, maxLevelCell) &
+               !$acc   present(highFreqThicknessNew) &
+               !$acc   present(highFreqThicknessCur) &
+               !$acc   present(lowFreqDivergenceNew) &
+               !$acc   present(lowFreqDivergenceCur) &
+               !$acc   present(lowFreqDivergenceTend)
+#else
                !$omp parallel
                !$omp do schedule(runtime) private(k, temp)
+#endif
                do iCell = 1, nCellsAll
                do k = minLevelCell(iCell), maxLevelCell(iCell)
 
@@ -1640,12 +1673,20 @@ module ocn_time_integration_split
                            (lowFreqDivergenceCur(k,iCell) + temp)
                end do
                end do
+#ifndef MPAS_OPENACC
                !$omp end do
                !$omp end parallel
+#endif
             end if
 
+#ifdef MPAS_OPENACC
+            !$acc parallel loop collapse(2) present(normalVelocityNew) &
+            !$acc   present(normalBaroclinicVelocityNew, edgeMask) &
+            !$acc   present(normalBarotropicVelocityNew)
+#else
             !$omp parallel
             !$omp do schedule(runtime) private(k)
+#endif
             do iEdge = 1, nEdgesAll
             do k = 1, nVertLevels
 
@@ -1658,28 +1699,14 @@ module ocn_time_integration_split
 
             enddo
             end do ! iEdge
+#ifndef MPAS_OPENACC
             !$omp end do
             !$omp end parallel
+#endif
 
             ! Efficiency note: We really only need this to compute
             ! layerThickEdge, density, pressure, and SSH
             ! in this diagnostics solve.
-#ifdef MPAS_OPENACC
-            !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
-            !$acc update device (normalTransportVelocity, &
-            !$acc                normalGMBolusVelocity)
-            !$acc enter data copyin(atmosphericPressure, seaIcePressure)
-            !$acc enter data copyin(sshNew)
-            !$acc enter data copyin(activeTracersNew)
-            !$acc update device(tracersSurfaceValue)
-            if ( associated(frazilSurfacePressure) ) then
-               !$acc enter data copyin(frazilSurfacePressure)
-            endif
-            if (landIcePressureOn) then
-               !$acc enter data copyin(landIcePressure)
-               !$acc enter data copyin(landIceDraft)
-            endif
-#endif
             call ocn_diagnostic_solve(dt, statePool, forcingPool, &
                                       meshPool, scratchPool, &
                                       tracersPool, 2, full=.false.)
@@ -1710,6 +1737,11 @@ module ocn_time_integration_split
                !$acc exit data delete(landIceDraft)
             endif
             !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+            !$acc exit data delete(normalBaroclinicVelocityNew)
+            !$acc exit data delete(normalBarotropicVelocityNew)
+            !$acc exit data delete(lowFreqDivergenceNew)
+            !$acc exit data delete(lowFreqDivergenceCur)
+            !$acc exit data delete(lowFreqDivergenceTend)
 #endif
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2063,7 +2095,7 @@ module ocn_time_integration_split
 
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
-      !$acc enter data copyin(layerThicknessCur)
+      !$acc enter data copyin(layerThicknessCur, normalVelocityCur)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -2141,7 +2173,6 @@ module ocn_time_integration_split
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
       !$acc exit data delete (atmosphericPressure, seaIcePressure)
-      !$acc exit data delete(layerThicknessNew, normalVelocityNew)
       if ( associated(frazilSurfacePressure) ) then
          !$acc exit data delete(frazilSurfacePressure)
       endif
@@ -2149,7 +2180,8 @@ module ocn_time_integration_split
          !$acc exit data delete(landIcePressure)
          !$acc exit data delete(landIceDraft)
       endif
-      !$acc exit data delete(layerThicknessCur)
+      !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+      !$acc exit data delete(layerThicknessCur, normalVelocityCur)
 #endif
 
       !! Compute normalGMBolusVelocity; it will be added to

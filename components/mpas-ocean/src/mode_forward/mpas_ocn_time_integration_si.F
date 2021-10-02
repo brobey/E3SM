@@ -3166,32 +3166,9 @@ module ocn_time_integration_si
 
       call mpas_timer_start('si fini')
 
-      if (config_prescribe_velocity) then
-         !$omp parallel
-         !$omp do schedule(runtime) private(k)
-         do iEdge = 1, nEdgesAll
-         do k=1,nVertLevels
-            normalVelocityNew(k,iEdge) = normalVelocityCur(k,iEdge)
-         end do
-         end do
-         !$omp end do
-         !$omp end parallel
-      end if
-
-      if (config_prescribe_thickness) then
-         !$omp parallel
-         !$omp do schedule(runtime) private(k)
-         do iCell = 1, nCellsAll
-         do k=1,nVertLevels
-            layerThicknessNew(k,iCell) = layerThicknessCur(k,iCell)
-         end do
-         end do
-         !$omp end do
-         !$omp end parallel
-      end if
-
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+      !$acc enter data copyin(layerThicknessCur, normalVelocityCur)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -3206,6 +3183,43 @@ module ocn_time_integration_si
          !$acc enter data copyin(landIceDraft)
       endif
 #endif
+
+      if (config_prescribe_velocity) then
+#ifdef MPAS_OPENACC
+         !$acc parallel loop collapse(2) present(normalVelocityNew, normalVelocityCur)
+#else
+         !$omp parallel
+         !$omp do schedule(runtime) private(k)
+#endif
+         do iEdge = 1, nEdgesAll
+         do k=1,nVertLevels
+            normalVelocityNew(k,iEdge) = normalVelocityCur(k,iEdge)
+         end do
+         end do
+#ifndef MPAS_OPENACC
+         !$omp end do
+         !$omp end parallel
+#endif
+      end if
+
+      if (config_prescribe_thickness) then
+#ifdef MPAS_OPENACC
+         !$acc parallel loop collapse(2) present(layerThicknessNew, layerThicknessCur)
+#else
+         !$omp parallel
+         !$omp do schedule(runtime) private(k)
+#endif
+         do iCell = 1, nCellsAll
+         do k=1,nVertLevels
+            layerThicknessNew(k,iCell) = layerThicknessCur(k,iCell)
+         end do
+         end do
+#ifndef MPAS_OPENACC
+         !$omp end do
+         !$omp end parallel
+#endif
+      end if
+
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
 
@@ -3241,6 +3255,7 @@ module ocn_time_integration_si
          !$acc exit data delete(landIceDraft)
       endif
       !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+      !$acc exit data delete(layerThicknessCur, normalVelocityCur)
 #endif
 
       !! Compute normalGMBolusVelocity; it will be added to

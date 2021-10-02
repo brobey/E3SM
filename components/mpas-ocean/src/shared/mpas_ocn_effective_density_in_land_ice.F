@@ -149,7 +149,7 @@ contains
       allocate(effectiveDensityScratch(nCells))
 
 #ifdef MPAS_OPENACC
-      !$acc parallel present(ssh, landIcePressure)
+      !$acc parallel present(ssh, landIcePressure, landIceMask, nEdgesOnCell, cellsOnCell, cellMask)
 #endif
 
 #ifdef MPAS_OPENACC
@@ -173,7 +173,7 @@ contains
 #endif
 
 #ifdef MPAS_OPENACC
-      !$acc loop
+      !$acc loop private(weightSum)
 #else
       !$omp do schedule(runtime) private(weightSum, i, cell2)
 #endif
@@ -189,13 +189,11 @@ contains
          end do
          effectiveDensityNew(iCell) = effectiveDensityNew(iCell)/weightSum
       end do
-#ifndef MPAS_OPENACC
-      !$omp end do
-      !$omp end parallel
-#endif
-
 #ifdef MPAS_OPENACC
       !$acc end parallel
+#else
+      !$omp end do
+      !$omp end parallel
 #endif
 
       deallocate(effectiveDensityScratch)
