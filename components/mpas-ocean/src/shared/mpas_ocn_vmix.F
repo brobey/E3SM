@@ -245,7 +245,7 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, k, cell1, cell2, Nsurf, N, nEdges
+      integer :: iEdge, k, cell1, cell2, Nsurf, N, nEdges, nVertLevels_val
       integer, pointer :: nVertLevels
       integer, dimension(:), pointer :: nEdgesArray
 
@@ -254,6 +254,9 @@ contains
       integer, dimension(:,:), pointer :: cellsOnEdge
 
       real (kind=RKIND), dimension(:), allocatable :: A, B, C, velTemp
+#ifdef MPAS_OPENACC
+      !$acc declare device_resident(A, B, C, velTemp)
+#endif
       real (kind=RKIND) :: edgeThicknessTotal
 
       err = 0
@@ -268,12 +271,17 @@ contains
       call mpas_pool_get_array(meshPool, 'cellsOnEdge', cellsOnEdge)
 
       nEdges = nEdgesArray( 1 )
+      nVertLevels_val = nVertLevels
 
-      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),velTemp(nVertLevels))
+      allocate(A(nVertLevels_val),B(nVertLevels_val),C(nVertLevels_val),velTemp(nVertLevels_val))
 
+#ifdef MPAS_OPENACC
+      !$acc parallel loop
+#else
       !$omp parallel
       !$omp do schedule(runtime) &
       !$omp private(Nsurf, N, cell1, cell2, edgeThicknessTotal, k, A, B, C, velTemp)
+#endif
       do iEdge = 1, nEdges
         Nsurf = minLevelEdgeBot(iEdge)
         N = maxLevelEdgeTop(iEdge)
@@ -328,12 +336,14 @@ contains
 
          normalVelocity(1:Nsurf-1,iEdge) = 0.0_RKIND
          normalVelocity(Nsurf:N,iEdge) = velTemp(Nsurf:N)
-         normalVelocity(N+1:nVertLevels,iEdge) = 0.0_RKIND
+         normalVelocity(N+1:nVertLevels_val,iEdge) = 0.0_RKIND
 
         end if
       end do
+#ifndef MPAS_OPENACC
       !$omp end do
       !$omp end parallel
+#endif
 
       deallocate(A,B,C,velTemp)
 
@@ -404,7 +414,7 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, k, cell1, cell2, N, Nsurf, nEdges
+      integer :: iEdge, k, cell1, cell2, N, Nsurf, nEdges, nVertLevels_val
       integer, pointer :: nVertLevels
       integer, dimension(:), pointer :: nEdgesArray
 
@@ -413,6 +423,9 @@ contains
       integer, dimension(:,:), pointer :: cellsOnEdge
 
       real (kind=RKIND), dimension(:), allocatable :: A, B, C, velTemp
+#ifdef MPAS_OPENACC
+      !$acc declare device_resident(A, B, C, velTemp)
+#endif
 
       err = 0
 
@@ -426,11 +439,17 @@ contains
       call mpas_pool_get_array(meshPool, 'cellsOnEdge', cellsOnEdge)
 
       nEdges = nEdgesArray( 1 )
+      nVertLevels_val = nVertLevels
 
-      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),velTemp(nVertLevels))
+      allocate(A(nVertLevels_val),B(nVertLevels_val),C(nVertLevels_val),velTemp(nVertLevels_val))
 
+#ifdef MPAS_OPENACC
+      !$acc parallel loop present(maxLevelEdgeTop, minLevelEdgeBot, cellsOnEdge, normalVelocity) &
+      !$acc   present(layerThicknessEdge, layerThickness, vertViscTopOfEdge, kineticEnergyCell)
+#else
       !$omp parallel
       !$omp do schedule(runtime) private(Nsurf, N, cell1, cell2, A, B, C, velTemp, k)
+#endif
       do iEdge = 1, nEdges
         N = maxLevelEdgeTop(iEdge)
         Nsurf = minLevelEdgeBot(iEdge)
@@ -477,12 +496,14 @@ contains
 
          normalVelocity(1:Nsurf-1,iEdge) = 0.0_RKIND
          normalVelocity(Nsurf:N,iEdge) = velTemp(Nsurf:N)
-         normalVelocity(N+1:nVertLevels,iEdge) = 0.0_RKIND
+         normalVelocity(N+1:nVertLevels_val,iEdge) = 0.0_RKIND
 
         end if
       end do
+#ifndef MPAS_OPENACC
       !$omp end do
       !$omp end parallel
+#endif
 
       deallocate(A,B,C,velTemp)
 
@@ -560,7 +581,7 @@ contains
       !
       !-----------------------------------------------------------------
 
-      integer :: iEdge, k, cell1, cell2, N, Nsurf, nEdges
+      integer :: iEdge, k, cell1, cell2, N, Nsurf, nEdges, nVertLevels_val
       integer, pointer :: nVertLevels
       real (kind=RKIND) :: implicitCd
       integer, dimension(:), pointer :: nEdgesArray
@@ -570,6 +591,9 @@ contains
       integer, dimension(:,:), pointer :: cellsOnEdge
 
       real (kind=RKIND), dimension(:), allocatable :: A, B, C, velTemp
+#ifdef MPAS_OPENACC
+      !$acc declare device_resident(A, B, C, velTemp)
+#endif
 
       err = 0
 
@@ -583,10 +607,15 @@ contains
       call mpas_pool_get_array(meshPool, 'cellsOnEdge', cellsOnEdge)
 
       nEdges = nEdgesArray( 1 )
+      nVertLevels_val = nVertLevels
 
-      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),velTemp(nVertLevels))
+      allocate(A(nVertLevels_val),B(nVertLevels_val),C(nVertLevels_val),velTemp(nVertLevels_val))
 
+#ifdef MPAS_OPENACC
+      !$acc parallel loop
+#else
       !$omp do schedule(runtime)
+#endif
       do iEdge = 1, nEdges
         Nsurf = minLevelEdgeBot(iEdge)
         N = maxLevelEdgeTop(iEdge)
@@ -637,11 +666,13 @@ contains
 
          normalVelocity(1:Nsurf-1,iEdge) = 0.0_RKIND
          normalVelocity(Nsurf:N,iEdge) = velTemp(Nsurf:N)
-         normalVelocity(N+1:nVertLevels,iEdge) = 0.0_RKIND
+         normalVelocity(N+1:nVertLevels_val,iEdge) = 0.0_RKIND
 
         end if
       end do
+#ifndef MPAS_OPENACC
       !$omp end do
+#endif
 
       deallocate(A,B,C,velTemp)
 
@@ -738,6 +769,9 @@ contains
       integer, dimension(:,:), pointer :: cellsOnEdge
 
       real (kind=RKIND), dimension(:), allocatable :: A, B, C, velTemp
+#ifdef MPAS_OPENACC
+      !$acc declare device_resident(A, B, C, velTemp)
+#endif
 
       ! vegetation_drag
       real (kind=RKIND), dimension(:), pointer :: vegetationHeight
@@ -747,11 +781,19 @@ contains
       integer, dimension(:), pointer ::vegetationMask
       real (kind=RKIND) :: old_bottom_Cd, lambda, beta, alpha, total_h
       real (kind=RKIND) :: inundation_depth, von_karman, cff1, cff2, cff3, cff4
-      integer :: iCell, nCells
+      integer :: iCell, nCells, nVertLevels_val
       integer, pointer :: nCellsSolve
+
+      real (kind=RKIND) :: vegetation_drag_coefficient, use_implicit_bottom_roughness
+      logical :: use_vegetation_drag, use_vegetation_manning_equation
 
       err = 0
       von_karman = 0.4_RKIND
+
+      use_implicit_bottom_roughness = config_use_implicit_bottom_roughness
+      vegetation_drag_coefficient = config_vegetation_drag_coefficient
+      use_vegetation_drag = config_use_vegetation_drag
+      use_vegetation_manning_equation = config_use_vegetation_manning_equation
 
       if(.not.velVmixOn) return
 
@@ -772,10 +814,13 @@ contains
       nEdges = nEdgesArray( 1 )
       nCells = nCellsSolve
 
-      allocate(A(nVertLevels),B(nVertLevels),C(nVertLevels),velTemp(nVertLevels))
+      allocate(A(nVertLevels_val),B(nVertLevels_val),C(nVertLevels_val),velTemp(nVertLevels_val))
 
       ! Compute bottomDrag (Manning roughness) induced by vegetation
-      if (config_use_vegetation_drag .AND. config_use_vegetation_manning_equation) then
+      if (use_vegetation_drag .AND. use_vegetation_manning_equation) then
+#ifdef MPAS_OPENACC
+        !$acc parallel loop
+#endif
         do iCell = 1, nCells
           if (vegetationDensity(iCell) * vegetationHeight(iCell) * vegetationDiameter(iCell) .eq. 0.0_RKIND) then
             vegetationMask(iCell) = 0
@@ -786,12 +831,12 @@ contains
             inundation_depth = MIN(vegetationHeight(iCell), total_h)
             inundation_depth = MAX(inundation_depth, 1e-6)
             lambda = vegetationDiameter(iCell) * vegetationDensity(iCell)
-            alpha = (config_vegetation_drag_coefficient*lambda/ &
+            alpha = (vegetation_drag_coefficient*lambda/ &
                    (4.0_RKIND*von_karman**2 * inundation_depth**2))**(1.0_RKIND/3.0_RKIND)
             beta = 0.5_RKIND*alpha*inundation_depth*(1.0_RKIND - EXP(-2.0_RKIND*alpha*inundation_depth)) &
                   / (1.0_RKIND - EXP(-alpha*inundation_depth))**2
             cff1 = total_h**(2.0_RKIND/3.0_RKIND) &
-                  * SQRT((0.5_RKIND*beta*lambda*config_vegetation_drag_coefficient*inundation_depth &
+                  * SQRT((0.5_RKIND*beta*lambda*vegetation_drag_coefficient*inundation_depth &
                   + old_bottom_Cd)/(gravity*total_h))
             cff2 = (alpha*inundation_depth)**2/(1.0_RKIND - EXP(-alpha*inundation_depth))
             cff3 = (1.0_RKIND - EXP(-alpha*inundation_depth))/(alpha**2 * inundation_depth*total_h)
@@ -805,7 +850,11 @@ contains
         enddo
       endif
 
+#ifdef MPAS_OPENACC
+      !$acc parallel loop
+#else
       !$omp do schedule(runtime)
+#endif
       do iEdge = 1, nEdges
         Nsurf = minLevelEdgeBot(iEdge)
         N = maxLevelEdgeTop(iEdge)
@@ -821,7 +870,7 @@ contains
          end do
 
          ! average cell-based implicit bottom drag to edges and convert Mannings n to Cd
-         if (config_use_implicit_bottom_roughness) then
+         if (use_implicit_bottom_roughness) then
            ! NCOM's formula for bottom drag coefficient
            ! The original formula is cb(i,j) = max(cbmin, (vonk/log(0.5*depth(i,j)/z0))**2 ))
            ! where vonk=0.16, z0=0.001, bracketed between [0.0025, 0.1]
@@ -830,7 +879,7 @@ contains
            implicitCd = max(0.0025_RKIND, &
                         min(0.1_RKIND, &
                           0.16_RKIND/log(250.0_RKIND*(bottomDepth(cell1)+bottomDepth(cell2)))**2 ))
-         elseif (config_use_vegetation_drag .AND. config_use_vegetation_manning_equation) then
+         elseif (use_vegetation_drag .AND. use_vegetation_manning_equation) then
            implicitCd = gravity*(0.5_RKIND*(vegetationManning(cell1) + vegetationManning(cell2)))**2 * &
             (0.5_RKIND * (ssh(cell1) + ssh(cell2) + bottomDepth(cell1) + bottomDepth(cell2)))**(-1.0_RKIND/3.0_RKIND)
          else
@@ -871,11 +920,13 @@ contains
 
          normalVelocity(1:Nsurf-1,iEdge) = 0.0_RKIND
          normalVelocity(Nsurf:N,iEdge) = velTemp(Nsurf:N)
-         normalVelocity(N+1:nVertLevels,iEdge) = 0.0_RKIND
+         normalVelocity(N+1:nVertLevels_val,iEdge) = 0.0_RKIND
 
         end if
       end do
+#ifndef MPAS_OPENACC
       !$omp end do
+#endif
 
       deallocate(A,B,C,velTemp)
 
@@ -1106,8 +1157,12 @@ contains
 
          nEdges = nEdgesArray( 1 )
          call mpas_timer_start('CVMix avg', .false.)
+#ifdef MPAS_OPENACC
+         !$acc parallel loop
+#else
          !$omp parallel
          !$omp do schedule(runtime) private(cell1, cell2, k)
+#endif
          do iEdge=1,nEdges
             vertViscTopOfEdge(:, iEdge) = 0.0_RKIND
             cell1 = cellsOnEdge(1,iEdge)
@@ -1116,8 +1171,10 @@ contains
                vertViscTopOfEdge(k,iEdge) = 0.5_RKIND*(vertViscTopOfCell(k,cell2)+vertViscTopOfCell(k,cell1))
             end do
          end do
+#ifndef MPAS_OPENACC
          !$omp end do
          !$omp end parallel
+#endif
          call mpas_timer_stop('CVMix avg')
       endif
 
@@ -1126,7 +1183,11 @@ contains
 
          nEdges = nEdgesArray( 1 )
          call mpas_timer_start('GOTM avg', .false.)
+#ifdef MPAS_OPENACC
+         !$acc parallel loop
+#else
          !$omp do schedule(runtime) private(cell1, cell2, k)
+#endif
          do iEdge=1,nEdges
             vertViscTopOfEdge(:, iEdge) = 0.0_RKIND
             cell1 = cellsOnEdge(1,iEdge)
@@ -1135,7 +1196,9 @@ contains
                vertViscTopOfEdge(k,iEdge) = 0.5_RKIND*(vertViscTopOfCell(k,cell2)+vertViscTopOfCell(k,cell1))
             end do
          end do
+#ifndef MPAS_OPENACC
          !$omp end do
+#endif
          call mpas_timer_stop('GOTM avg')
       endif
 
@@ -1177,13 +1240,19 @@ contains
             ! store tracers
             if (trim(groupItr % memberName) == 'activeTracers') then
                if (config_compute_active_tracer_budgets) then
+#ifdef MPAS_OPENACC
+                  !$acc parallel loop
+#else
                   !$omp parallel
                   !$omp do schedule(runtime)
+#endif
                   do iCell = 1, nCells
                      activeTracerVertMixTendency(:,:,iCell)=tracersGroup(:,:,iCell)
                   end do
+#ifndef MPAS_OPENACC
                   !$omp end do
                   !$omp end parallel
+#endif
                endif
             endif
 
@@ -1205,14 +1274,20 @@ contains
             ! difference tracers to compute influence of vertical mixing and divide by dt
             if (trim(groupItr % memberName) == 'activeTracers') then
                if (config_compute_active_tracer_budgets) then
+#ifdef MPAS_OPENACC
+                  !$acc parallel loop
+#else
                   !$omp parallel
                   !$omp do schedule(runtime)
+#endif
                   do iCell = 1, nCells
                      activeTracerVertMixTendency(:,:,iCell) = &
                         (tracersGroup(:,:,iCell) - activeTracerVertMixTendency(:,:,iCell)) / dt
                   end do
+#ifndef MPAS_OPENACC
                   !$omp end do
                   !$omp end parallel
+#endif
                endif
             endif
 
@@ -1311,6 +1386,9 @@ contains
 !
 !-----------------------------------------------------------------------
    subroutine tridiagonal_solve(a,b,c,r,x,n) !{{{
+#ifdef MPAS_OPENACC
+!$acc routine seq
+#endif
 
       !-----------------------------------------------------------------
       !

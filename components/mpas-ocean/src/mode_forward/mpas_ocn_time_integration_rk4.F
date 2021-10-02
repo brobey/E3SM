@@ -1564,6 +1564,9 @@ module ocn_time_integration_rk4
       endif
 #endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
+
+      call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, scratchPool, err, 2)
+
 #ifdef MPAS_OPENACC
       !$acc update host(layerThickEdge)
       !$acc update host(relativeVorticity, circulation)
@@ -1592,8 +1595,6 @@ module ocn_time_integration_rk4
       endif
       !$acc exit data delete (layerThicknessNew, normalVelocityNew)
 #endif
-
-      call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, scratchPool, err, 2)
 
    end subroutine ocn_time_integrator_rk4_cleanup!}}}
 

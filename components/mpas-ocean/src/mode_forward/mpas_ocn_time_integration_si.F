@@ -166,6 +166,8 @@ module ocn_time_integration_si
          swForcingPool,     &! structure holding short-wave forcing vars
          tracersIdealAgeFieldsPool     ! structure holding idealAge-related fields
 
+      type (mpas_pool_type), pointer :: diagnosticsPool
+
       logical :: &
          activeTracersOnly   ! only compute tendencies for active tracers
 
@@ -374,6 +376,8 @@ module ocn_time_integration_si
       call mpas_pool_get_subpool(tendPool,  'tracersTend', &
                                              tracersTendPool)
 
+      call mpas_pool_get_subpool(block%structs, 'diagnostics', diagnosticsPool)
+
       !*** Retrieve state variables at two time levels
 
       call mpas_pool_get_array(statePool, 'normalBaroclinicVelocity', &
@@ -538,6 +542,9 @@ module ocn_time_integration_si
          call mpas_pool_get_array(forcingPool, 'landIcePressure', landIcePressure)
          call mpas_pool_get_array(forcingPool, 'landIceDraft', landIceDraft)
       endif
+
+      call mpas_pool_get_array(diagnosticsPool, 'surfaceFrictionVelocity', &
+                 surfaceFrictionVelocity)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! BEGIN large outer timestep iteration loop
@@ -3075,6 +3082,24 @@ module ocn_time_integration_si
 #endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
+
+#ifdef MPAS_OPENACC
+      !$acc update host(surfaceFrictionVelocity)
+#endif
+      call mpas_dmpar_field_halo_exch(domain, 'surfaceFrictionVelocity')
+#ifdef MPAS_OPENACC
+      !$acc update device(surfaceFrictionVelocity)
+#endif
+
+      ! Compute normalGMBolusVelocity; it will be added to the
+      ! baroclinic modes in Stage 2 above.
+      !if (config_use_GM.or.config_use_Redi) then
+      !   call ocn_gm_compute_Bolus_velocity(statePool, &
+      !             meshPool, scratchPool, timeLevelIn=2)
+      !end if
+      call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, &
+                             scratchPool, err, 2)
+
 #ifdef MPAS_OPENACC
       !$acc update host(layerThickEdge)
       !$acc update host(relativeVorticity, circulation)
@@ -3103,17 +3128,6 @@ module ocn_time_integration_si
       endif
       !$acc exit data delete(layerThicknessNew, normalVelocityNew)
 #endif
-
-      call mpas_dmpar_field_halo_exch(domain, 'surfaceFrictionVelocity')
-
-      ! Compute normalGMBolusVelocity; it will be added to the
-      ! baroclinic modes in Stage 2 above.
-      !if (config_use_GM.or.config_use_Redi) then
-      !   call ocn_gm_compute_Bolus_velocity(statePool, &
-      !             meshPool, scratchPool, timeLevelIn=2)
-      !end if
-      call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, &
-                             scratchPool, err, 2)
 
       ! Update halo on u and tracers, which were just updated for
       ! implicit vertical mixing.  If not done, this leads to lack of
