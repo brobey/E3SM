@@ -186,6 +186,7 @@ contains
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(ssh)
+      !$acc update host(density, potentialDensity, displacedDensity)
       !$acc exit data delete(activeTracers)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)

@@ -1731,6 +1731,7 @@ module ocn_time_integration_split
             !$acc update host (surfacePressure)
             !$acc update host(zMid, zTop)
             !$acc exit data copyout(sshNew)
+            !$acc update host(density, potentialDensity, displacedDensity)
             !$acc exit data delete(activeTracersNew)
             !$acc update host(tracersSurfaceValue)
             !$acc update host(normalVelocitySurfaceLayer)
@@ -1981,17 +1982,9 @@ module ocn_time_integration_split
       ! END large iteration loop
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      call mpas_timer_start("se implicit vert mix")
-
-      ! Call ocean diagnostic solve in preparation for vertical mixing.
-      ! Note it is called again after vertical mixing, because u and
-      ! tracers change. For Richardson vertical mixing, only density,
-      ! layerThickEdge, and kineticEnergyCell need to be computed.
-      ! For kpp, more variables may be needed.  Either way, this could
-      ! be made more efficient by only computing what is needed for the
-      ! implicit vmix routine that follows.
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+      !$acc enter data copyin(layerThicknessCur, normalVelocityCur)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -2006,6 +1999,16 @@ module ocn_time_integration_split
          !$acc enter data copyin(landIceDraft)
       endif
 #endif
+
+      call mpas_timer_start("se implicit vert mix")
+
+      ! Call ocean diagnostic solve in preparation for vertical mixing.
+      ! Note it is called again after vertical mixing, because u and
+      ! tracers change. For Richardson vertical mixing, only density,
+      ! layerThickEdge, and kineticEnergyCell need to be computed.
+      ! For kpp, more variables may be needed.  Either way, this could
+      ! be made more efficient by only computing what is needed for the
+      ! implicit vmix routine that follows.
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
 
@@ -2040,35 +2043,6 @@ module ocn_time_integration_split
                                       timeLevel=2)
       call mpas_timer_stop('se vmix halos normalVelFld')
 
-#ifdef MPAS_OPENACC
-      !$acc update host(layerThickEdge)
-      !$acc update host(relativeVorticity, circulation)
-      !$acc update host(vertTransportVelocityTop, &
-      !$acc             vertGMBolusVelocityTop, &
-      !$acc             relativeVorticityCell, &
-      !$acc             divergence, &
-      !$acc             kineticEnergyCell, &
-      !$acc             tangentialVelocity, &
-      !$acc             vertVelocityTop)
-      !$acc update host(normRelVortEdge, normPlanetVortEdge, &
-      !$acc             normalizedRelativeVorticityCell)
-      !$acc update host (surfacePressure)
-      !$acc update host(zMid, zTop)
-      !$acc exit data copyout(sshNew)
-      !$acc exit data delete(activeTracersNew)
-      !$acc update host(tracersSurfaceValue)
-      !$acc update host(normalVelocitySurfaceLayer)
-      !$acc exit data delete (atmosphericPressure, seaIcePressure)
-      if ( associated(frazilSurfacePressure) ) then
-         !$acc exit data delete(frazilSurfacePressure)
-      endif
-      if (landIcePressureOn) then
-         !$acc exit data delete(landIcePressure)
-         !$acc exit data delete(landIceDraft)
-      endif
-      !$acc exit data delete(layerThicknessNew, normalVelocityNew)
-#endif
-
       call mpas_pool_begin_iteration(tracersPool)
       do while ( mpas_pool_get_next_member(tracersPool, groupItr) )
          if (groupItr%memberType == MPAS_POOL_FIELD) then
@@ -2085,13 +2059,29 @@ module ocn_time_integration_split
                                          'idealAgeTracersIdealAgeMask', &
                                           tracerGroupIdealAgeMask)
 
+#ifdef MPAS_OPENACC
+      !$acc update device(tracersGroupNew)
+      !$acc update device(tracerGroupIdealAgeMask)
+#endif
+
+#ifdef MPAS_OPENACC
+                !$acc parallel loop
+#else
                 !$omp parallel
                 !$omp do schedule(runtime)
+#endif
                 do iCell = 1, nCellsOwned
                    tracersGroupNew(1,1,iCell) = tracerGroupIdealAgeMask(1,iCell)*tracersGroupNew(1,1,iCell)
                 end do ! cells
+#ifndef MPAS_OPENACC
                 !$omp end do
                 !$omp end parallel
+#endif
+
+#ifdef MPAS_OPENACC
+      !$acc update host(tracersGroupNew)
+      !$acc update host(tracerGroupIdealAgeMask)
+#endif
              endif
 
             ! Halo update on all tracer groups
@@ -2099,24 +2089,6 @@ module ocn_time_integration_split
 
          end if
       end do
-
-#ifdef MPAS_OPENACC
-      !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
-      !$acc enter data copyin(layerThicknessCur, normalVelocityCur)
-      !$acc update device (normalTransportVelocity, &
-      !$acc                normalGMBolusVelocity)
-      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
-      !$acc enter data copyin(sshNew)
-      !$acc enter data copyin(activeTracersNew)
-      !$acc update device(tracersSurfaceValue)
-      if ( associated(frazilSurfacePressure) ) then
-         !$acc enter data copyin(frazilSurfacePressure)
-      endif
-      if (landIcePressureOn) then
-         !$acc enter data copyin(landIcePressure)
-         !$acc enter data copyin(landIceDraft)
-      endif
-#endif
 
       call mpas_timer_stop('se vmix halos')
 
@@ -2183,6 +2155,7 @@ module ocn_time_integration_split
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshNew)
+      !$acc update host(density, potentialDensity, displacedDensity)
       !$acc exit data delete(activeTracersNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)

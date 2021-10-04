@@ -1300,6 +1300,7 @@ module ocn_time_integration_rk4
       !$acc update host (surfacePressure)
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshCur)
+      !$acc update host(density, potentialDensity, displacedDensity)
       !$acc exit data delete(activeTracersCur)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
