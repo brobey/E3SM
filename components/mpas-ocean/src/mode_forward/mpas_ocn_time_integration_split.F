@@ -1731,6 +1731,8 @@ module ocn_time_integration_split
             !$acc update host (surfacePressure)
             !$acc update host(zMid, zTop)
             !$acc exit data copyout(sshNew)
+            !$acc update host(thermExpCoeff,  &
+            !$acc&            salineContractCoeff)
             !$acc update host(density, potentialDensity, displacedDensity)
             !$acc exit data delete(activeTracersNew)
             !$acc update host(tracersSurfaceValue)
@@ -2156,6 +2158,8 @@ module ocn_time_integration_split
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshNew)
       !$acc update host(density, potentialDensity, displacedDensity)
+      !$acc update host(thermExpCoeff,  &
+      !$acc&            salineContractCoeff)
       !$acc exit data delete(activeTracersNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)

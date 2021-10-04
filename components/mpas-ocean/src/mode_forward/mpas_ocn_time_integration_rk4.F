@@ -732,6 +732,8 @@ module ocn_time_integration_rk4
          !$acc update host(zMid, zTop)
          !$acc exit data copyout(sshNew)
          !$acc update host(density, potentialDensity, displacedDensity)
+         !$acc update host(thermExpCoeff,  &
+         !$acc&            salineContractCoeff)
          !$acc exit data delete(activeTracersNew)
          !$acc update host(tracersSurfaceValue)
          !$acc update host(normalVelocitySurfaceLayer)
@@ -1302,6 +1304,8 @@ module ocn_time_integration_rk4
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshCur)
       !$acc update host(density, potentialDensity, displacedDensity)
+      !$acc update host(thermExpCoeff,  &
+      !$acc&            salineContractCoeff)
       !$acc exit data delete(activeTracersCur)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
@@ -1585,6 +1589,8 @@ module ocn_time_integration_rk4
       !$acc update host(zMid, zTop)
       !$acc exit data copyout(sshNew)
       !$acc update host(density, potentialDensity, displacedDensity)
+      !$acc update host(thermExpCoeff,  &
+      !$acc&            salineContractCoeff)
       !$acc exit data delete(activeTracersNew)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)
