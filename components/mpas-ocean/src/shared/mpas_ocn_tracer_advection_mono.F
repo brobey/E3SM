@@ -385,7 +385,7 @@ module ocn_tracer_advection_mono
         ! Initialize flux arrays for all cells
 
 #ifdef MPAS_OPENACC
-        !$acc parallel loop &
+        !$acc parallel loop collapse(2) &
         !$acc    present (workTend, flxIn, flxOut)
 #else
         !$omp parallel

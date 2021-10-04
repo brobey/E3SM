@@ -189,6 +189,17 @@ contains
       !$acc update host(density, potentialDensity, displacedDensity)
       !$acc update host(thermExpCoeff,  &
       !$acc&            salineContractCoeff)
+      !$acc update host(montgomeryPotential, pressure)
+
+      !$acc update host(RiTopOfCell, &
+      !$acc             BruntVaisalaFreqTop)
+
+      !$acc update host(tracersSurfaceLayerValue, &
+      !$acc             indexSurfaceLayerDepth, &
+      !$acc             normalVelocitySurfaceLayer, &
+      !$acc             sfcFlxAttCoeff, &
+      !$acc             surfaceFluxAttenuationCoefficientRunoff)
+
       !$acc exit data delete(activeTracers)
       !$acc update host(tracersSurfaceValue)
       !$acc update host(normalVelocitySurfaceLayer)

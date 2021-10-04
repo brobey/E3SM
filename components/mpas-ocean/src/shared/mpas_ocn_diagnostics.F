@@ -455,18 +455,18 @@ contains
 !     !$acc update host(tracersSurfaceValue)
 
 !     !$acc update host(normalVelocitySurfaceLayer)
-      !$acc update host(montgomeryPotential, pressure)
+!     !$acc update host(montgomeryPotential, pressure)
 
-      if ( full_compute ) then
-         !$acc update host(RiTopOfCell, &
-         !$acc             BruntVaisalaFreqTop)
+!     if ( full_compute ) then
+!        !$acc update host(RiTopOfCell, &
+!        !$acc             BruntVaisalaFreqTop)
 
-         !$acc update host(tracersSurfaceLayerValue, &
-         !$acc             indexSurfaceLayerDepth, &
-         !$acc             normalVelocitySurfaceLayer, &
-         !$acc             sfcFlxAttCoeff, &
-         !$acc             surfaceFluxAttenuationCoefficientRunoff)
-      end if ! full_compute
+!        !$acc update host(tracersSurfaceLayerValue, &
+!        !$acc             indexSurfaceLayerDepth, &
+!        !$acc             normalVelocitySurfaceLayer, &
+!        !$acc             sfcFlxAttCoeff, &
+!        !$acc             surfaceFluxAttenuationCoefficientRunoff)
+!     end if ! full_compute
 
 !     !$acc exit data delete (atmosphericPressure, seaIcePressure)
 !     if ( associated(frazilSurfacePressure) ) then
