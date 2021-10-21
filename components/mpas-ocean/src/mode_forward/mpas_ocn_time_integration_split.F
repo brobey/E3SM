@@ -1603,13 +1603,13 @@ module ocn_time_integration_split
          if (splitExplicitStep == numTSIterations) then
             !$acc enter data copyin(normalBaroclinicVelocityCur)
             if (config_compute_active_tracer_budgets) then
-               !$acc enter data copyin(activeTracerHorizontalAdvectionEdgeFlux)
-               !$acc enter data copyin(activeTracerHorizontalAdvectionTendency)
-               !$acc enter data copyin(activeTracerVerticalAdvectionTendency)
-               !$acc enter data copyin(activeTracerHorMixTendency)
-               !$acc enter data copyin(activeTracerSurfaceFluxTendency)
-               !$acc enter data copyin(temperatureShortWaveTendency)
-               !$acc enter data copyin(activeTracerNonLocalTendency)
+               !$acc updae device(activeTracerHorizontalAdvectionEdgeFlux)
+               !$acc updae device(activeTracerHorizontalAdvectionTendency)
+               !$acc updae device(activeTracerVerticalAdvectionTendency)
+               !$acc updae device(activeTracerHorMixTendency)
+               !$acc updae device(activeTracerSurfaceFluxTendency)
+               !$acc updae device(temperatureShortWaveTendency)
+               !$acc updae device(activeTracerNonLocalTendency)
             endif
          endif
 #endif
@@ -2130,13 +2130,13 @@ module ocn_time_integration_split
          if (splitExplicitStep == numTSIterations) then
             !$acc exit data delete(normalBaroclinicVelocityCur)
             if (config_compute_active_tracer_budgets) then
-               !$acc exit data delete(activeTracerHorizontalAdvectionEdgeFlux)
-               !$acc exit data copyout(activeTracerHorizontalAdvectionTendency)
-               !$acc exit data copyout(activeTracerVerticalAdvectionTendency)
-               !$acc exit data copyout(activeTracerHorMixTendency)
-               !$acc exit data copyout(activeTracerSurfaceFluxTendency)
-               !$acc exit data copyout(temperatureShortWaveTendency)
-               !$acc exit data copyout(activeTracerNonLocalTendency)
+               !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
+               !$acc update host(activeTracerHorizontalAdvectionTendency)
+               !$acc update host(activeTracerVerticalAdvectionTendency)
+               !$acc update host(activeTracerHorMixTendency)
+               !$acc update host(activeTracerSurfaceFluxTendency)
+               !$acc update host(temperatureShortWaveTendency)
+               !$acc update host(activeTracerNonLocalTendency)
             endif
          endif
 #endif
