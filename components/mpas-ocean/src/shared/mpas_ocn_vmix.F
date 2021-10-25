@@ -784,8 +784,9 @@ contains
       integer :: iCell, nCells, nVertLevels_val
       integer, pointer :: nCellsSolve
 
-      real (kind=RKIND) :: vegetation_drag_coefficient, use_implicit_bottom_roughness
-      logical :: use_vegetation_drag, use_vegetation_manning_equation
+      real (kind=RKIND) :: vegetation_drag_coefficient
+      logical :: use_vegetation_drag, use_vegetation_manning_equation, &
+        use_implicit_bottom_roughness
 
       err = 0
       von_karman = 0.4_RKIND
