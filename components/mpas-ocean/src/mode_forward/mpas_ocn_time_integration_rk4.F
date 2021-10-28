@@ -40,11 +40,8 @@ module ocn_time_integration_rk4
    use ocn_wetting_drying
 
    use ocn_effective_density_in_land_ice
-<<<<<<< HEAD
    use ocn_surface_land_ice_fluxes
-=======
    use ocn_transport_tests
->>>>>>> origin/master
 
    implicit none
    private
