@@ -225,6 +225,8 @@ module ocn_time_integration_split
          startIndex, endIndex, &! start, end index for tracer groups
          indexSalinity          ! tracer index for salinity
 
+      integer :: startIndex_val, endIndex_val
+
       type (mpas_pool_iterator_type) :: &
          groupItr               ! iterator for tracer groups
 
@@ -1593,11 +1595,39 @@ module ocn_time_integration_split
             call mpas_pool_get_dimension(tracersPool,'activeGRP_end', &
                                                       endIndex)
 
+            startIndex_val = startIndex
+            endIndex_val   = endIndex
+
             ! Only need T & S for earlier iterations,
             ! then all the tracers needed the last time through.
 
+#ifdef MPAS_OPENACC
+            !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+            !$acc update device (normalTransportVelocity, &
+            !$acc                normalGMBolusVelocity)
+            !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+            !$acc enter data copyin(sshNew)
+
+            !$acc enter data copyin(layerThicknessTend, &
+            !$acc                   activeTracersTend,  &
+            !$acc                   layerThicknessCur,  &
+            !$acc                   tracersGroupNew,    &
+            !$acc                   tracersGroupCur)
+#endif
+
+#ifdef MPAS_OPENACC
+            !$acc parallel loop present(minLevelCell,       &
+            !$acc                       maxLevelCell,       &
+            !$acc                       layerThicknessTend, &
+            !$acc                       activeTracersTend,  &
+            !$acc                       layerThicknessNew,  &
+            !$acc                       layerThicknessCur,  &
+            !$acc                       tracersGroupNew,    &
+            !$acc                       tracersGroupCur)
+#else
             !$omp parallel
             !$omp do schedule(runtime) private(i, k, temp_h, temp)
+#endif
             do iCell = 1, nCellsAll
             do k = minLevelCell(iCell), maxLevelCell(iCell)
 
@@ -1609,7 +1639,7 @@ module ocn_time_integration_split
                layerThicknessNew(k,iCell) = 0.5* &
                (layerThicknessCur(k,iCell) + temp_h)
 
-               do i = startIndex, endIndex
+               do i = startIndex_val, endIndex_val
                   ! This is Phi at n+1
                   temp = (tracersGroupCur(i,k,iCell)* &
                           layerThicknessCur(k,iCell) + dt* &
@@ -1621,15 +1651,21 @@ module ocn_time_integration_split
                end do ! tracer index
             end do ! vertical
             end do ! iCell
+#ifndef MPAS_OPENACC
             !$omp end do
             !$omp end parallel
+#endif
 
 #ifdef MPAS_OPENACC
-            !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
-            !$acc update device (normalTransportVelocity, &
-            !$acc                normalGMBolusVelocity)
-            !$acc enter data copyin(atmosphericPressure, seaIcePressure)
-            !$acc enter data copyin(sshNew)
+            !$acc exit data delete(layerThicknessTend, &
+            !$acc                  activeTracersTend, &
+            !$acc                  layerThicknessCur, &
+            !$acc                  tracersGroupCur)
+            !$acc exit data copyout(tracersGroupNew)
+            !$acc update host(layerThicknessNew)
+#endif
+
+#ifdef MPAS_OPENACC
             !$acc enter data copyin(activeTracersNew)
             !$acc update device(tracersSurfaceValue)
             if ( associated(frazilSurfacePressure) ) then
