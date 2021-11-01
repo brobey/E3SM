@@ -1608,6 +1608,22 @@ module ocn_time_integration_split
             !$acc enter data copyin(atmosphericPressure, seaIcePressure)
             !$acc enter data copyin(sshNew)
 
+            !$acc update device(tracersSurfaceValue)
+            if ( associated(frazilSurfacePressure) ) then
+               !$acc enter data copyin(frazilSurfacePressure)
+            endif
+            if (landIcePressureOn) then
+               !$acc enter data copyin(landIcePressure)
+               !$acc enter data copyin(landIceDraft)
+            endif
+            !$acc enter data copyin(normalBaroclinicVelocityNew)
+            !$acc enter data copyin(normalBarotropicVelocityNew)
+            !$acc enter data copyin(highFreqThicknessNew)
+            !$acc enter data copyin(highFreqThicknessCur)
+            !$acc enter data copyin(lowFreqDivergenceNew)
+            !$acc enter data copyin(lowFreqDivergenceCur)
+            !$acc enter data copyin(lowFreqDivergenceTend)
+
             !$acc enter data copyin(layerThicknessTend, &
             !$acc                   activeTracersTend,  &
             !$acc                   layerThicknessCur,  &
@@ -1629,6 +1645,9 @@ module ocn_time_integration_split
             !$omp do schedule(runtime) private(i, k, temp_h, temp)
 #endif
             do iCell = 1, nCellsAll
+#ifdef MPAS_OPENACC
+            !$acc loop seq
+#endif
             do k = minLevelCell(iCell), maxLevelCell(iCell)
 
                ! this is h_{n+1}
@@ -1639,6 +1658,9 @@ module ocn_time_integration_split
                layerThicknessNew(k,iCell) = 0.5* &
                (layerThicknessCur(k,iCell) + temp_h)
 
+#ifdef MPAS_OPENACC
+               !$acc loop seq
+#endif
                do i = startIndex_val, endIndex_val
                   ! This is Phi at n+1
                   temp = (tracersGroupCur(i,k,iCell)* &
@@ -1654,34 +1676,6 @@ module ocn_time_integration_split
 #ifndef MPAS_OPENACC
             !$omp end do
             !$omp end parallel
-#endif
-
-#ifdef MPAS_OPENACC
-            !$acc exit data delete(layerThicknessTend, &
-            !$acc                  activeTracersTend, &
-            !$acc                  layerThicknessCur, &
-            !$acc                  tracersGroupCur)
-            !$acc exit data copyout(tracersGroupNew)
-            !$acc update host(layerThicknessNew)
-#endif
-
-#ifdef MPAS_OPENACC
-            !$acc enter data copyin(activeTracersNew)
-            !$acc update device(tracersSurfaceValue)
-            if ( associated(frazilSurfacePressure) ) then
-               !$acc enter data copyin(frazilSurfacePressure)
-            endif
-            if (landIcePressureOn) then
-               !$acc enter data copyin(landIcePressure)
-               !$acc enter data copyin(landIceDraft)
-            endif
-            !$acc enter data copyin(normalBaroclinicVelocityNew)
-            !$acc enter data copyin(normalBarotropicVelocityNew)
-            !$acc enter data copyin(highFreqThicknessNew)
-            !$acc enter data copyin(highFreqThicknessCur)
-            !$acc enter data copyin(lowFreqDivergenceNew)
-            !$acc enter data copyin(lowFreqDivergenceCur)
-            !$acc enter data copyin(lowFreqDivergenceTend)
 #endif
 
             if (config_use_freq_filtered_thickness) then
@@ -1747,12 +1741,28 @@ module ocn_time_integration_split
             !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+            !$acc exit data delete(layerThicknessTend, &
+            !$acc                  activeTracersTend, &
+            !$acc                  layerThicknessCur, &
+            !$acc                  tracersGroupCur)
+            !$acc exit data copyout(tracersGroupNew)
+#endif
+
+#ifdef MPAS_OPENACC
+            !$acc enter data copyin(activeTracersNew)
+#endif
+
             ! Efficiency note: We really only need this to compute
             ! layerThickEdge, density, pressure, and SSH
             ! in this diagnostics solve.
             call ocn_diagnostic_solve(dt, statePool, forcingPool, &
                                       meshPool, scratchPool, &
                                       tracersPool, 2, full=.false.)
+#ifdef MPAS_OPENACC
+            !$acc update host(layerThicknessNew)
+#endif
+
 #ifdef MPAS_OPENACC
             !$acc update host(layerThickEdge)
             !$acc update host(relativeVorticity, circulation)
