@@ -2062,15 +2062,6 @@ module ocn_time_integration_split
 #ifdef MPAS_OPENACC
             !$acc exit data delete(layerThicknessCur, layerThicknessTend)
             !$acc exit data copyout(layerThicknessNew)
-            if (config_compute_active_tracer_budgets) then
-               !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
-               !$acc update host(activeTracerHorizontalAdvectionTendency)
-               !$acc update host(activeTracerVerticalAdvectionTendency)
-               !$acc update host(activeTracerHorMixTendency)
-               !$acc update host(activeTracerSurfaceFluxTendency)
-               !$acc update host(temperatureShortWaveTendency)
-               !$acc update host(activeTracerNonLocalTendency)
-            endif
 #endif
 
             if (config_use_freq_filtered_thickness) then
@@ -2141,15 +2132,29 @@ module ocn_time_integration_split
             !$omp end parallel
 #endif
 
+         endif ! splitExplicitStep
+
 #ifdef MPAS_OPENACC
+         if (splitExplicitStep < numTSIterations) then
+         endif
+
+         if (splitExplicitStep == numTSIterations) then
             !$acc exit data copyout(normalVelocityNew)
             !$acc exit data delete(normalBarotropicVelocityNew, normalBaroclinicVelocityNew, normalBaroclinicVelocityCur)
             !$acc exit data copyout(lowFreqDivergenceNew)
             !$acc exit data delete(lowFreqDivergenceTend, lowFreqDivergenceCur)
             !$acc exit data delete(latCell)
+            if (config_compute_active_tracer_budgets) then
+               !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
+               !$acc update host(activeTracerHorizontalAdvectionTendency)
+               !$acc update host(activeTracerVerticalAdvectionTendency)
+               !$acc update host(activeTracerHorMixTendency)
+               !$acc update host(activeTracerSurfaceFluxTendency)
+               !$acc update host(temperatureShortWaveTendency)
+               !$acc update host(activeTracerNonLocalTendency)
+            endif
+         endif
 #endif
-         endif ! splitExplicitStep
-
 
          call mpas_timer_stop('se loop fini')
          call mpas_timer_stop('se loop')
