@@ -226,6 +226,7 @@ module ocn_time_integration_split
          indexSalinity          ! tracer index for salinity
 
       integer :: startIndex_val, endIndex_val
+      integer :: iTracer, numTracers
 
       type (mpas_pool_iterator_type) :: &
          groupItr               ! iterator for tracer groups
@@ -1587,19 +1588,9 @@ module ocn_time_integration_split
          !  If iterating, reset variables for next iteration
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+         numTracers  = size(activeTracerHorizontalAdvectionEdgeFlux,dim=1)
+
          if (splitExplicitStep < numTSIterations) then
-
-            ! Get indices for dynamic tracers (Includes T&S).
-            call mpas_pool_get_dimension(tracersPool,'activeGRP_start',&
-                                                      startIndex)
-            call mpas_pool_get_dimension(tracersPool,'activeGRP_end', &
-                                                      endIndex)
-
-            startIndex_val = startIndex
-            endIndex_val   = endIndex
-
-            ! Only need T & S for earlier iterations,
-            ! then all the tracers needed the last time through.
 
 #ifdef MPAS_OPENACC
             !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
@@ -1630,6 +1621,18 @@ module ocn_time_integration_split
             !$acc                   tracersGroupNew,    &
             !$acc                   tracersGroupCur)
 #endif
+
+            ! Get indices for dynamic tracers (Includes T&S).
+            call mpas_pool_get_dimension(tracersPool,'activeGRP_start',&
+                                                      startIndex)
+            call mpas_pool_get_dimension(tracersPool,'activeGRP_end', &
+                                                      endIndex)
+
+            startIndex_val = startIndex
+            endIndex_val   = endIndex
+
+            ! Only need T & S for earlier iterations,
+            ! then all the tracers needed the last time through.
 
 #ifdef MPAS_OPENACC
             !$acc parallel loop present(minLevelCell,       &
@@ -1804,63 +1807,118 @@ module ocn_time_integration_split
 
          elseif (splitExplicitStep == numTSIterations) then
 
+#ifdef MPAS_OPENACC
+            !$acc enter data copyin(layerThicknessCur, layerThicknessTend, layerThicknessNew)
+            if (config_compute_active_tracer_budgets) then
+               !$acc update device(activeTracerHorizontalAdvectionEdgeFlux)
+               !$acc update device(activeTracerHorizontalAdvectionTendency)
+               !$acc update device(activeTracerVerticalAdvectionTendency)
+               !$acc update device(activeTracerHorMixTendency)
+               !$acc update device(activeTracerSurfaceFluxTendency)
+               !$acc update device(temperatureShortWaveTendency)
+               !$acc update device(activeTracerNonLocalTendency)
+            endif
+#endif
+
+#ifdef MPAS_OPENACC
+            !$acc parallel loop present(minLevelCell, maxLevelCell) &
+            !$acc   present(layerThicknessTend) &
+            !$acc   present(layerThicknessNew) &
+            !$acc   present(layerThicknessCur)
+#else
             !$omp parallel
             !$omp do schedule(runtime) private(k)
-            do iCell = 1, nCellsAll
-            do k = minLevelCell(iCell), maxLevelCell(iCell)
+#endif
+            do icell = 1, ncellsall
+            do k = minlevelcell(icell), maxlevelcell(icell)
                ! this is h_{n+1}
-               layerThicknessNew(k,iCell) = &
-                                     layerThicknessCur(k,iCell) + &
-                                  dt*layerThicknessTend(k,iCell)
+               layerthicknessnew(k,icell) = &
+                                     layerthicknesscur(k,iCell) + &
+                                  dt*layerthicknesstend(k,iCell)
             end do
             end do
+#ifndef MPAS_OPENACC
             !$omp end do
             !$omp end parallel
+#endif
 
             if (config_compute_active_tracer_budgets) then
 
+#ifdef MPAS_openacc
+               !$acc parallel loop present(minleveledgeBot, maxLevelEdgeTop) &
+               !$acc   present(layerthickedge) &
+               !$acc   present(activetracerhorizontaladvectionEdgeFlux)
+#else
                !$omp parallel
                !$omp do schedule(runtime) private(k)
-               do iEdge = 1, nEdgesAll
-               do k= minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
-                  activeTracerHorizontalAdvectionEdgeFlux(:,k,iEdge) = &
-                  activeTracerHorizontalAdvectionEdgeFlux(:,k,iEdge) / &
-                       layerThickEdge(k,iEdge)
+#endif
+               do iedge = 1, nedgesall
+               do k= minleveledgebot(iedge), maxleveledgeTop(iEdge)
+                  activetracerhorizontaladvectionedgeflux(:,k,iEdge) = &
+                  activetracerhorizontaladvectionedgeflux(:,k,iEdge) / &
+                       layerthickedge(k,iedge)
                enddo
                enddo
+#ifndef MPAS_OPENACC
                !$omp end do
+#endif
 
+#ifdef MPAS_OPENACC
+               !$acc parallel loop present(minlevelcell, maxLevelCell) &
+               !$acc   present(layerThicknessNew) &
+               !$acc   present(activeTracerHorizontalAdvectionTendency) &
+               !$acc   present(activeTracerVerticalAdvectionTendency) &
+               !$acc   present(activeTracerHorMixTendency) &
+               !$acc   present(activeTracerSurfaceFluxTendency) &
+               !$acc   present(temperatureShortWaveTendency) &
+               !$acc   present(activeTracerNonLocalTendency)
+#else
                !$omp do schedule(runtime) private(k)
-               do iCell = 1, nCellsAll
-               do k= minLevelCell(iCell), maxLevelCell(iCell)
-                  activeTracerHorizontalAdvectionTendency(:,k,iCell) = &
-                  activeTracerHorizontalAdvectionTendency(:,k,iCell) / &
-                            layerThicknessNew(k,iCell)
+#endif
+               do icell = 1, ncellsall
+               do k= minlevelcell(icell), maxlevelcell(iCell)
+                  do iTracer = 1, numTracers
+                     activeTracerHorizontalAdvectionTendency(iTracer,k,iCell) = &
+                     activeTracerHorizontalAdvectionTendency(iTracer,k,iCell) / &
+                               layerThicknessNew(k,iCell)
 
-                  activeTracerVerticalAdvectionTendency(:,k,iCell) = &
-                  activeTracerVerticalAdvectionTendency(:,k,iCell) / &
-                            layerThicknessNew(k,iCell)
+                     activeTracerVerticalAdvectionTendency(iTracer,k,iCell) = &
+                     activeTracerVerticalAdvectionTendency(iTracer,k,iCell) / &
+                               layerThicknessNew(k,iCell)
 
-                  activeTracerHorMixTendency(:,k,iCell) = &
-                  activeTracerHorMixTendency(:,k,iCell) / &
-                             layerThicknessNew(k,iCell)
+                     activeTracerHorMixTendency(iTracer,k,iCell) = &
+                     activeTracerHorMixTendency(iTracer,k,iCell) / &
+                                layerThicknessNew(k,iCell)
 
-                  activeTracerSurfaceFluxTendency(:,k,iCell) = &
-                  activeTracerSurfaceFluxTendency(:,k,iCell) / &
-                             layerThicknessNew(k,iCell)
+                     activeTracerSurfaceFluxTendency(iTracer,k,iCell) = &
+                     activeTracerSurfaceFluxTendency(iTracer,k,iCell) / &
+                                layerThicknessNew(k,iCell)
 
-                  temperatureShortWaveTendency(k,iCell) = &
-                  temperatureShortWaveTendency(k,iCell) / &
-                             layerThicknessNew(k,iCell)
-
-                  activeTracerNonLocalTendency(:,k,iCell) = &
-                  activeTracerNonLocalTendency(:,k,iCell) / &
-                             layerThicknessNew(k,iCell)
+                     activeTracerNonLocalTendency(iTracer,k,iCell) = &
+                     activeTracerNonLocalTendency(iTracer,k,iCell) / &
+                                layerThicknessNew(k,iCell)
+                  end do
                end do
                end do
+#ifndef MPAS_OPENACC
                !$omp end do
                !$omp end parallel
+#endif
             endif
+
+#ifdef MPAS_OPENACC
+            !$acc exit data delete(layerThicknessCur, layerThicknessTend)
+            !$acc exit data copyout(layerThicknessNew)
+            if (config_compute_active_tracer_budgets) then
+               !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
+               !$acc update host(activeTracerHorizontalAdvectionTendency)
+               !$acc update host(activeTracerVerticalAdvectionTendency)
+               !$acc update host(activeTracerHorMixTendency)
+               !$acc update host(activeTracerSurfaceFluxTendency)
+               !$acc update host(temperatureShortWaveTendency)
+               !$acc update host(activeTracerNonLocalTendency)
+            endif
+#endif
 
             call mpas_pool_begin_iteration(tracersPool)
             do while (mpas_pool_get_next_member(tracersPool, &
