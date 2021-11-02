@@ -228,7 +228,7 @@ module ocn_time_integration_split
       integer :: startIndex_val, endIndex_val
       integer :: reset_debugTracers_top_nLayers
       integer :: indexSalinityVal
-      integer :: iTracer, numTracers
+      integer :: iTracer, numTracers, numActiveTracers
 
       type (mpas_pool_iterator_type) :: &
          groupItr               ! iterator for tracer groups
@@ -1591,7 +1591,7 @@ module ocn_time_integration_split
          !  If iterating, reset variables for next iteration
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-         numTracers  = size(activeTracerHorizontalAdvectionEdgeFlux,dim=1)
+         numActiveTracers  = size(activeTracerHorizontalAdvectionEdgeFlux,dim=1)
 
          if (splitExplicitStep < numTSIterations) then
 
@@ -1856,7 +1856,7 @@ module ocn_time_integration_split
 #endif
                do iEdge = 1, nEdgesAll
                do k= minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
-                  do iTracer = 1, numTracers
+                  do iTracer = 1, numActiveTracers
                      activeTracerHorizontalAdvectionEdgeFlux(iTracer,k,iEdge) = &
                      activeTracerHorizontalAdvectionEdgeFlux(iTracer,k,iEdge) / &
                           layerThickEdge(k,iEdge)
@@ -1881,7 +1881,7 @@ module ocn_time_integration_split
 #endif
                do iCell = 1, nCellsAll
                do k= minLevelCell(iCell), maxLevelCell(iCell)
-                  do iTracer = 1, numTracers
+                  do iTracer = 1, numActiveTracers
                      activeTracerHorizontalAdvectionTendency(iTracer,k,iCell) = &
                      activeTracerHorizontalAdvectionTendency(iTracer,k,iCell) / &
                                layerThicknessNew(k,iCell)
@@ -1937,6 +1937,8 @@ module ocn_time_integration_split
                      !$acc                   tracersGroupTend)
 #endif
 
+                     numTracers  = size(tracersGroupNew,dim=1)
+
 #ifdef MPAS_OPENACC
                      !$acc parallel loop present(minLevelCell, maxLevelCell) &
                      !$acc   present(layerThicknessNew) &
@@ -1950,11 +1952,13 @@ module ocn_time_integration_split
 #endif
                      do iCell = 1, nCellsAll
                      do k = minLevelCell(iCell), maxLevelCell(iCell)
-                        tracersGroupNew(:,k,iCell) = &
-                       (tracersGroupCur(:,k,iCell) * &
-                        layerThicknessCur(k,iCell) + dt* &
-                       tracersGroupTend(:,k,iCell))/ &
-                        layerThicknessNew(k,iCell)
+                        do iTracer = 1, numTracers
+                            tracersGroupNew(iTracer,k,iCell) = &
+                           (tracersGroupCur(iTracer,k,iCell) * &
+                            layerThicknessCur(k,iCell) + dt* &
+                           tracersGroupTend(iTracer,k,iCell))/ &
+                            layerThicknessNew(k,iCell)
+                        end do
                      end do
                      end do
 #ifndef MPAS_OPENACC
