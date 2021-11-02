@@ -2098,6 +2098,10 @@ module ocn_time_integration_split
 
 #ifdef MPAS_OPENACC
          if (splitExplicitStep < numTSIterations) then
+            !$acc exit data delete (atmosphericPressure, seaIcePressure)
+            !$acc exit data copyout(sshNew)
+            !$acc exit data delete(activeTracersNew)
+            !$acc update host(tracersSurfaceValue)
             if ( associated(frazilSurfacePressure) ) then
                !$acc exit data delete(frazilSurfacePressure)
             endif
@@ -2105,23 +2109,6 @@ module ocn_time_integration_split
                !$acc exit data delete(landIcePressure)
                !$acc exit data delete(landIceDraft)
             endif
-            !$acc exit data delete(layerThicknessNew, normalVelocityNew)
-            !$acc exit data delete(normalBaroclinicVelocityNew)
-            !$acc exit data delete(normalBarotropicVelocityNew)
-            if (config_use_freq_filtered_thickness) then
-               !$acc exit data delete(lowFreqDivergenceNew)
-               !$acc exit data delete(lowFreqDivergenceCur)
-               !$acc exit data delete(lowFreqDivergenceTend)
-            endif
-            !$acc update host(normRelVortEdge, normPlanetVortEdge, &
-            !$acc             normalizedRelativeVorticityCell)
-            !$acc update host (surfacePressure)
-            !$acc update host(zMid, zTop)
-            !$acc exit data copyout(sshNew)
-            !$acc exit data delete(activeTracersNew)
-            !$acc update host(tracersSurfaceValue)
-            !$acc update host(normalVelocitySurfaceLayer)
-            !$acc exit data delete (atmosphericPressure, seaIcePressure)
             !$acc update host(layerThickEdge)
             !$acc update host(relativeVorticity, circulation)
             !$acc update host(vertTransportVelocityTop, &
@@ -2131,13 +2118,25 @@ module ocn_time_integration_split
             !$acc             kineticEnergyCell, &
             !$acc             tangentialVelocity, &
             !$acc             vertVelocityTop)
+            !$acc update host(normRelVortEdge, normPlanetVortEdge, &
+            !$acc             normalizedRelativeVorticityCell)
+            !$acc update host (surfacePressure)
+            !$acc update host(zMid, zTop)
+            !$acc update host(normalVelocitySurfaceLayer)
+            !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+         endif
+
+         !$acc exit data delete(normalBaroclinicVelocityNew)
+         !$acc exit data delete(normalBarotropicVelocityNew)
+         if (config_use_freq_filtered_thickness) then
+            !$acc exit data copyout(lowFreqDivergenceNew)
+            !$acc exit data delete(lowFreqDivergenceCur)
+            !$acc exit data delete(lowFreqDivergenceTend)
          endif
 
          if (splitExplicitStep == numTSIterations) then
             !$acc exit data copyout(normalVelocityNew)
-            !$acc exit data delete(normalBarotropicVelocityNew, normalBaroclinicVelocityNew, normalBaroclinicVelocityCur)
-            !$acc exit data copyout(lowFreqDivergenceNew)
-            !$acc exit data delete(lowFreqDivergenceTend, lowFreqDivergenceCur)
+            !$acc exit data delete(normalBaroclinicVelocityCur)
             !$acc exit data delete(latCell)
             !$acc exit data delete(layerThicknessCur, layerThicknessTend)
             !$acc exit data copyout(layerThicknessNew)
