@@ -1610,13 +1610,15 @@ module ocn_time_integration_split
                !$acc enter data copyin(landIcePressure)
                !$acc enter data copyin(landIceDraft)
             endif
-            !$acc enter data copyin(normalBaroclinicVelocityNew)
-            !$acc enter data copyin(normalBarotropicVelocityNew)
             !$acc enter data copyin(highFreqThicknessNew)
             !$acc enter data copyin(highFreqThicknessCur)
-            !$acc enter data copyin(lowFreqDivergenceNew)
-            !$acc enter data copyin(lowFreqDivergenceCur)
-            !$acc enter data copyin(lowFreqDivergenceTend)
+            !$acc enter data copyin(normalBaroclinicVelocityNew)
+            !$acc enter data copyin(normalBarotropicVelocityNew)
+            if (config_use_freq_filtered_thickness) then
+               !$acc enter data copyin(lowFreqDivergenceNew)
+               !$acc enter data copyin(lowFreqDivergenceCur)
+               !$acc enter data copyin(lowFreqDivergenceTend)
+            endif
 
             !$acc enter data copyin(layerThicknessTend, &
             !$acc                   activeTracersTend,  &
@@ -1638,14 +1640,13 @@ module ocn_time_integration_split
             ! then all the tracers needed the last time through.
 
 #ifdef MPAS_OPENACC
-            !$acc parallel loop present(minLevelCell,       &
-            !$acc                       maxLevelCell,       &
-            !$acc                       layerThicknessTend, &
-            !$acc                       activeTracersTend,  &
-            !$acc                       layerThicknessNew,  &
-            !$acc                       layerThicknessCur,  &
-            !$acc                       tracersGroupNew,    &
-            !$acc                       tracersGroupCur)
+            !$acc parallel loop present(minLevelCell, maxLevelCell) &
+            !$acc   present(layerThicknessNew) &
+            !$acc   present(layerThicknessCur) &
+            !$acc   present(layerThicknessTend) &
+            !$acc   present(tracersGroupCur) &
+            !$acc   present(tracersGroupNew) &
+            !$acc   present(activeTracersTend)
 #else
             !$omp parallel
             !$omp do schedule(runtime) private(i, k, temp_h, temp)
