@@ -1759,11 +1759,8 @@ module ocn_time_integration_split
             !$omp end parallel
 #endif
 
+! These are the same arrays?
 #ifdef MPAS_OPENACC
-            !$acc exit data delete(layerThicknessTend, &
-            !$acc                  activeTracersTend, &
-            !$acc                  layerThicknessCur, &
-            !$acc                  tracersGroupCur)
             !$acc exit data copyout(tracersGroupNew)
 #endif
 
@@ -2123,9 +2120,15 @@ module ocn_time_integration_split
             !$acc update host (surfacePressure)
             !$acc update host(zMid, zTop)
             !$acc update host(normalVelocitySurfaceLayer)
-            !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+            !$acc exit data copyout(layerThicknessNew)
+            !$acc exit data delete(normalVelocityNew)
+
+            !$acc exit data delete(activeTracersTend, &
+            !$acc                  tracersGroupCur)
          endif
 
+         !$acc exit data delete(layerThicknessTend)
+         !$acc exit data delete(layerThicknessCur)
          !$acc exit data delete(normalBaroclinicVelocityNew)
          !$acc exit data delete(normalBarotropicVelocityNew)
          if (config_use_freq_filtered_thickness) then
@@ -2138,7 +2141,6 @@ module ocn_time_integration_split
             !$acc exit data copyout(normalVelocityNew)
             !$acc exit data delete(normalBaroclinicVelocityCur)
             !$acc exit data delete(latCell)
-            !$acc exit data delete(layerThicknessCur, layerThicknessTend)
             !$acc exit data copyout(layerThicknessNew)
             if (config_compute_active_tracer_budgets) then
                !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
