@@ -1781,17 +1781,6 @@ module ocn_time_integration_split
             !$acc update host(layerThicknessNew)
 #endif
 
-#ifdef MPAS_OPENACC
-            !$acc update host(layerThickEdge)
-            !$acc update host(relativeVorticity, circulation)
-            !$acc update host(vertTransportVelocityTop, &
-            !$acc             vertGMBolusVelocityTop, &
-            !$acc             relativeVorticityCell, &
-            !$acc             divergence, &
-            !$acc             kineticEnergyCell, &
-            !$acc             tangentialVelocity, &
-            !$acc             vertVelocityTop)
-#endif
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          ! If large iteration complete, compute all variables at
@@ -2133,6 +2122,15 @@ module ocn_time_integration_split
             !$acc update host(tracersSurfaceValue)
             !$acc update host(normalVelocitySurfaceLayer)
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
+            !$acc update host(layerThickEdge)
+            !$acc update host(relativeVorticity, circulation)
+            !$acc update host(vertTransportVelocityTop, &
+            !$acc             vertGMBolusVelocityTop, &
+            !$acc             relativeVorticityCell, &
+            !$acc             divergence, &
+            !$acc             kineticEnergyCell, &
+            !$acc             tangentialVelocity, &
+            !$acc             vertVelocityTop)
          endif
 
          if (splitExplicitStep == numTSIterations) then
