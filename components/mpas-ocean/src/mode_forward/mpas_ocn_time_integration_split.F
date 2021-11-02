@@ -226,6 +226,7 @@ module ocn_time_integration_split
          indexSalinity          ! tracer index for salinity
 
       integer :: startIndex_val, endIndex_val
+      integer :: indexSalinityVal
       integer :: iTracer, numTracers
 
       type (mpas_pool_iterator_type) :: &
@@ -1829,12 +1830,12 @@ module ocn_time_integration_split
             !$omp parallel
             !$omp do schedule(runtime) private(k)
 #endif
-            do icell = 1, ncellsall
-            do k = minlevelcell(icell), maxlevelcell(icell)
+            do iCell = 1, nCellsAll
+            do k = minLevelCell(iCell), maxLevelCell(iCell)
                ! this is h_{n+1}
-               layerthicknessnew(k,icell) = &
-                                     layerthicknesscur(k,iCell) + &
-                                  dt*layerthicknesstend(k,iCell)
+               layerThicknessNew(k,icell) = &
+                                     layerThicknessCur(k,iCell) + &
+                                  dt*layerThicknessTend(k,iCell)
             end do
             end do
 #ifndef MPAS_OPENACC
@@ -1844,19 +1845,19 @@ module ocn_time_integration_split
 
             if (config_compute_active_tracer_budgets) then
 
-#ifdef MPAS_openacc
-               !$acc parallel loop present(minleveledgeBot, maxLevelEdgeTop) &
-               !$acc   present(layerthickedge) &
-               !$acc   present(activetracerhorizontaladvectionEdgeFlux)
+#ifdef MPAS_OPENACC
+               !$acc parallel loop present(minLevelEdgeBot, maxLevelEdgeTop) &
+               !$acc   present(layerThickEdge) &
+               !$acc   present(activeTracerHorizontalAdvectionEdgeFlux)
 #else
                !$omp parallel
                !$omp do schedule(runtime) private(k)
 #endif
-               do iedge = 1, nedgesall
-               do k= minleveledgebot(iedge), maxleveledgeTop(iEdge)
-                  activetracerhorizontaladvectionedgeflux(:,k,iEdge) = &
-                  activetracerhorizontaladvectionedgeflux(:,k,iEdge) / &
-                       layerthickedge(k,iedge)
+               do iEdge = 1, nEdgesAll
+               do k= minLevelEdgeBot(iEdge), maxLevelEdgeTop(iEdge)
+                  activeTracerHorizontalAdvectionEdgeFlux(:,k,iEdge) = &
+                  activeTracerHorizontalAdvectionEdgeFlux(:,k,iEdge) / &
+                       layerThickEdge(k,iedge)
                enddo
                enddo
 #ifndef MPAS_OPENACC
@@ -1864,7 +1865,7 @@ module ocn_time_integration_split
 #endif
 
 #ifdef MPAS_OPENACC
-               !$acc parallel loop present(minlevelcell, maxLevelCell) &
+               !$acc parallel loop present(minLevelCell, maxLevelCell) &
                !$acc   present(layerThicknessNew) &
                !$acc   present(activeTracerHorizontalAdvectionTendency) &
                !$acc   present(activeTracerVerticalAdvectionTendency) &
@@ -1875,8 +1876,8 @@ module ocn_time_integration_split
 #else
                !$omp do schedule(runtime) private(k)
 #endif
-               do icell = 1, ncellsall
-               do k= minlevelcell(icell), maxlevelcell(iCell)
+               do iCell = 1, nCellsAll
+               do k= minLevelCell(iCell), maxLevelCell(iCell)
                   do iTracer = 1, numTracers
                      activeTracerHorizontalAdvectionTendency(iTracer,k,iCell) = &
                      activeTracerHorizontalAdvectionTendency(iTracer,k,iCell) / &
@@ -1959,13 +1960,16 @@ module ocn_time_integration_split
                      ! limit salinity in separate loop
                      if (trim(groupItr%memberName) == &
                          'activeTracers' ) then
+
+                        indexSalinityVal = indexSalinity
+
                         !$omp parallel
                         !$omp do schedule(runtime) private(k)
                         do iCell = 1, nCellsAll
                         do k = minLevelCell(iCell), maxLevelCell(iCell)
-                           tracersGroupNew(indexSalinity,k,iCell) = &
+                           tracersGroupNew(indexSalinityVal,k,iCell) = &
                            max(0.001_RKIND,  &
-                           tracersGroupNew(indexSalinity,k,iCell))
+                           tracersGroupNew(indexSalinityVal,k,iCell))
                         end do
                         end do
                         !$omp end do
