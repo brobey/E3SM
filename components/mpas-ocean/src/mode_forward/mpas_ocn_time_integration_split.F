@@ -1587,16 +1587,9 @@ module ocn_time_integration_split
          call mpas_pool_get_array(tracersTendPool,'activeTracersTend', &
                                                    activeTracersTend)
 
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         !  If iterating, reset variables for next iteration
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-         numActiveTracers  = size(activeTracerHorizontalAdvectionEdgeFlux,dim=1)
-
-         if (splitExplicitStep < numTSIterations) then
-
 #ifdef MPAS_OPENACC
-            !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+         !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+         if (splitExplicitStep < numTSIterations) then
             !$acc update device (normalTransportVelocity, &
             !$acc                normalGMBolusVelocity)
             !$acc enter data copyin(atmosphericPressure, seaIcePressure)
@@ -1612,20 +1605,44 @@ module ocn_time_integration_split
             endif
             !$acc enter data copyin(highFreqThicknessNew)
             !$acc enter data copyin(highFreqThicknessCur)
-            !$acc enter data copyin(normalBaroclinicVelocityNew)
-            !$acc enter data copyin(normalBarotropicVelocityNew)
-            if (config_use_freq_filtered_thickness) then
-               !$acc enter data copyin(lowFreqDivergenceNew)
-               !$acc enter data copyin(lowFreqDivergenceCur)
-               !$acc enter data copyin(lowFreqDivergenceTend)
-            endif
 
-            !$acc enter data copyin(layerThicknessTend, &
-            !$acc                   activeTracersTend,  &
-            !$acc                   layerThicknessCur,  &
+            !$acc enter data copyin(activeTracersTend,  &
             !$acc                   tracersGroupNew,    &
             !$acc                   tracersGroupCur)
+         endif
+
+         !$acc enter data copyin(layerThicknessTend)
+         !$acc enter data copyin(layerThicknessCur)
+         !$acc enter data copyin(normalBaroclinicVelocityNew)
+         !$acc enter data copyin(normalBarotropicVelocityNew)
+         if (config_use_freq_filtered_thickness) then
+            !$acc enter data copyin(lowFreqDivergenceNew)
+            !$acc enter data copyin(lowFreqDivergenceCur)
+            !$acc enter data copyin(lowFreqDivergenceTend)
+         endif
+
+         if (splitExplicitStep == numTSIterations) then
+            !$acc enter data copyin(normalBaroclinicVelocityCur)
+            !$acc enter data copyin(latCell)
+            if (config_compute_active_tracer_budgets) then
+               !$acc update device(activeTracerHorizontalAdvectionEdgeFlux)
+               !$acc update device(activeTracerHorizontalAdvectionTendency)
+               !$acc update device(activeTracerVerticalAdvectionTendency)
+               !$acc update device(activeTracerHorMixTendency)
+               !$acc update device(activeTracerSurfaceFluxTendency)
+               !$acc update device(temperatureShortWaveTendency)
+               !$acc update device(activeTracerNonLocalTendency)
+            endif
+         endif
 #endif
+
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         !  If iterating, reset variables for next iteration
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+         numActiveTracers  = size(activeTracerHorizontalAdvectionEdgeFlux,dim=1)
+
+         if (splitExplicitStep < numTSIterations) then
 
             ! Get indices for dynamic tracers (Includes T&S).
             call mpas_pool_get_dimension(tracersPool,'activeGRP_start',&
@@ -1791,23 +1808,6 @@ module ocn_time_integration_split
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
          elseif (splitExplicitStep == numTSIterations) then
-
-#ifdef MPAS_OPENACC
-            !$acc enter data copyin(layerThicknessCur, layerThicknessTend, layerThicknessNew)
-            !$acc enter data copyin(normalVelocityNew)
-            !$acc enter data copyin(normalBarotropicVelocityNew, normalBaroclinicVelocityNew, normalBaroclinicVelocityCur)
-            !$acc enter data copyin(lowFreqDivergenceNew, lowFreqDivergenceTend, lowFreqDivergenceCur)
-            !$acc enter data copyin(latCell)
-            if (config_compute_active_tracer_budgets) then
-               !$acc update device(activeTracerHorizontalAdvectionEdgeFlux)
-               !$acc update device(activeTracerHorizontalAdvectionTendency)
-               !$acc update device(activeTracerVerticalAdvectionTendency)
-               !$acc update device(activeTracerHorMixTendency)
-               !$acc update device(activeTracerSurfaceFluxTendency)
-               !$acc update device(temperatureShortWaveTendency)
-               !$acc update device(activeTracerNonLocalTendency)
-            endif
-#endif
 
 #ifdef MPAS_OPENACC
             !$acc parallel loop present(minLevelCell, maxLevelCell) &
