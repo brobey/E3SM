@@ -1783,19 +1783,6 @@ module ocn_time_integration_split
             !$acc update host(tracersSurfaceValue)
             !$acc update host(normalVelocitySurfaceLayer)
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
-            if ( associated(frazilSurfacePressure) ) then
-               !$acc exit data delete(frazilSurfacePressure)
-            endif
-            if (landIcePressureOn) then
-               !$acc exit data delete(landIcePressure)
-               !$acc exit data delete(landIceDraft)
-            endif
-            !$acc exit data delete(layerThicknessNew, normalVelocityNew)
-            !$acc exit data delete(normalBaroclinicVelocityNew)
-            !$acc exit data delete(normalBarotropicVelocityNew)
-            !$acc exit data delete(lowFreqDivergenceNew)
-            !$acc exit data delete(lowFreqDivergenceCur)
-            !$acc exit data delete(lowFreqDivergenceTend)
 #endif
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2136,6 +2123,21 @@ module ocn_time_integration_split
 
 #ifdef MPAS_OPENACC
          if (splitExplicitStep < numTSIterations) then
+            if ( associated(frazilSurfacePressure) ) then
+               !$acc exit data delete(frazilSurfacePressure)
+            endif
+            if (landIcePressureOn) then
+               !$acc exit data delete(landIcePressure)
+               !$acc exit data delete(landIceDraft)
+            endif
+            !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+            !$acc exit data delete(normalBaroclinicVelocityNew)
+            !$acc exit data delete(normalBarotropicVelocityNew)
+            if (config_use_freq_filtered_thickness) then
+               !$acc exit data delete(lowFreqDivergenceNew)
+               !$acc exit data delete(lowFreqDivergenceCur)
+               !$acc exit data delete(lowFreqDivergenceTend)
+            endif
          endif
 
          if (splitExplicitStep == numTSIterations) then
