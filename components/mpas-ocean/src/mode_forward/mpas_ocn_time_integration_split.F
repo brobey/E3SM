@@ -1791,15 +1791,6 @@ module ocn_time_integration_split
             !$acc             kineticEnergyCell, &
             !$acc             tangentialVelocity, &
             !$acc             vertVelocityTop)
-            !$acc update host(normRelVortEdge, normPlanetVortEdge, &
-            !$acc             normalizedRelativeVorticityCell)
-            !$acc update host (surfacePressure)
-            !$acc update host(zMid, zTop)
-            !$acc exit data copyout(sshNew)
-            !$acc exit data delete(activeTracersNew)
-            !$acc update host(tracersSurfaceValue)
-            !$acc update host(normalVelocitySurfaceLayer)
-            !$acc exit data delete (atmosphericPressure, seaIcePressure)
 #endif
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2046,11 +2037,6 @@ module ocn_time_integration_split
                end if ! tracer
             end do ! tracer group
 
-#ifdef MPAS_OPENACC
-            !$acc exit data delete(layerThicknessCur, layerThicknessTend)
-            !$acc exit data copyout(layerThicknessNew)
-#endif
-
             if (config_use_freq_filtered_thickness) then
 
 #ifdef MPAS_OPENACC
@@ -2138,6 +2124,15 @@ module ocn_time_integration_split
                !$acc exit data delete(lowFreqDivergenceCur)
                !$acc exit data delete(lowFreqDivergenceTend)
             endif
+            !$acc update host(normRelVortEdge, normPlanetVortEdge, &
+            !$acc             normalizedRelativeVorticityCell)
+            !$acc update host (surfacePressure)
+            !$acc update host(zMid, zTop)
+            !$acc exit data copyout(sshNew)
+            !$acc exit data delete(activeTracersNew)
+            !$acc update host(tracersSurfaceValue)
+            !$acc update host(normalVelocitySurfaceLayer)
+            !$acc exit data delete (atmosphericPressure, seaIcePressure)
          endif
 
          if (splitExplicitStep == numTSIterations) then
@@ -2146,6 +2141,8 @@ module ocn_time_integration_split
             !$acc exit data copyout(lowFreqDivergenceNew)
             !$acc exit data delete(lowFreqDivergenceTend, lowFreqDivergenceCur)
             !$acc exit data delete(latCell)
+            !$acc exit data delete(layerThicknessCur, layerThicknessTend)
+            !$acc exit data copyout(layerThicknessNew)
             if (config_compute_active_tracer_budgets) then
                !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
                !$acc update host(activeTracerHorizontalAdvectionTendency)
