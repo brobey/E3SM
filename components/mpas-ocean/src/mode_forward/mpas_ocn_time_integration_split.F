@@ -252,6 +252,9 @@ module ocn_time_integration_split
          tracersGroupTend,      &! tendencies for tracer groups
          activeTracersTend       ! active tracer tendencies
 
+      real (kind=RKIND), dimension(:,:,:), pointer :: &
+         activeTracersCur
+
       ! Forcing pool
       real (kind=RKIND), dimension(:), pointer :: tidalPotentialEta
 
@@ -1579,9 +1582,9 @@ module ocn_time_integration_split
 
          call mpas_timer_start('se loop fini')
          call mpas_pool_get_array(tracersPool, 'activeTracers', &
-                                                tracersGroupCur, 1)
+                                                activeTracersCur, 1)
          call mpas_pool_get_array(tracersPool, 'activeTracers', &
-                                                tracersGroupNew, 2)
+                                                activeTracersNew, 2)
          call mpas_pool_get_array(statePool,   'normalVelocity', &
                                                 normalVelocityCur, 1)
          call mpas_pool_get_array(tracersTendPool,'activeTracersTend', &
@@ -1607,8 +1610,8 @@ module ocn_time_integration_split
             !$acc enter data copyin(highFreqThicknessCur)
 
             !$acc enter data copyin(activeTracersTend,  &
-            !$acc                   tracersGroupNew,    &
-            !$acc                   tracersGroupCur)
+            !$acc                   activeTracersNew,    &
+            !$acc                   activeTracersCur)
          endif
 
          !$acc enter data copyin(layerThicknessTend)
@@ -1661,8 +1664,8 @@ module ocn_time_integration_split
             !$acc   present(layerThicknessNew) &
             !$acc   present(layerThicknessCur) &
             !$acc   present(layerThicknessTend) &
-            !$acc   present(tracersGroupCur) &
-            !$acc   present(tracersGroupNew) &
+            !$acc   present(activeTracersCur) &
+            !$acc   present(activeTracersNew) &
             !$acc   present(activeTracersTend)
 #else
             !$omp parallel
@@ -1681,13 +1684,13 @@ module ocn_time_integration_split
 
                do i = startIndex_val, endIndex_val
                   ! This is Phi at n+1
-                  temp = (tracersGroupCur(i,k,iCell)* &
+                  temp = (activeTracersCur(i,k,iCell)* &
                           layerThicknessCur(k,iCell) + dt* &
                           activeTracersTend(i,k,iCell))/temp_h
 
                   ! This is Phi at n+1/2
-                  tracersGroupNew(i,k,iCell) = 0.5_RKIND* &
-                            (tracersGroupCur(i,k,iCell) + temp)
+                  activeTracersNew(i,k,iCell) = 0.5_RKIND* &
+                            (activeTracersCur(i,k,iCell) + temp)
                end do ! tracer index
             end do ! vertical
             end do ! iCell
@@ -1759,13 +1762,8 @@ module ocn_time_integration_split
             !$omp end parallel
 #endif
 
-! These are the same arrays?
 #ifdef MPAS_OPENACC
-            !$acc exit data copyout(tracersGroupNew)
-#endif
-
-#ifdef MPAS_OPENACC
-            !$acc enter data copyin(activeTracersNew)
+            !$acc update host(activeTracersNew)
 #endif
 
             ! Efficiency note: We really only need this to compute
@@ -2123,7 +2121,7 @@ module ocn_time_integration_split
             !$acc update host(normalVelocitySurfaceLayer)
             !$acc exit data delete(normalVelocityNew)
             !$acc exit data delete(activeTracersTend)
-            !$acc exit data delete(tracersGroupCur)
+            !$acc exit data delete(activeTracersCur)
          endif
 
          !$acc exit data delete(layerThicknessTend)
