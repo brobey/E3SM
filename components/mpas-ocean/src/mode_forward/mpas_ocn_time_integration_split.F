@@ -1597,7 +1597,7 @@ module ocn_time_integration_split
             !$acc                normalGMBolusVelocity)
             !$acc enter data copyin(atmosphericPressure, seaIcePressure)
             !$acc enter data copyin(sshNew)
-
+            !$acc enter data copyin(activeTracersNew)
             !$acc update device(tracersSurfaceValue)
             if ( associated(frazilSurfacePressure) ) then
                !$acc enter data copyin(frazilSurfacePressure)
@@ -1610,7 +1610,6 @@ module ocn_time_integration_split
             !$acc enter data copyin(highFreqThicknessCur)
 
             !$acc enter data copyin(activeTracersTend,  &
-            !$acc                   activeTracersNew,    &
             !$acc                   activeTracersCur)
          endif
 
