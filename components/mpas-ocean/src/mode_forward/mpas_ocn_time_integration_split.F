@@ -2094,6 +2094,7 @@ module ocn_time_integration_split
          endif ! splitExplicitStep
 
 #ifdef MPAS_OPENACC
+         !$acc exit data copyout(layerThicknessNew)
          if (splitExplicitStep < numTSIterations) then
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
             !$acc exit data copyout(sshNew)
@@ -2120,17 +2121,15 @@ module ocn_time_integration_split
             !$acc update host (surfacePressure)
             !$acc update host(zMid, zTop)
             !$acc update host(normalVelocitySurfaceLayer)
-            !$acc exit data copyout(layerThicknessNew)
             !$acc exit data delete(normalVelocityNew)
-
-            !$acc exit data delete(activeTracersTend, &
-            !$acc                  tracersGroupCur)
+            !$acc exit data delete(activeTracersTend)
+            !$acc exit data delete(tracersGroupCur)
          endif
 
          !$acc exit data delete(layerThicknessTend)
          !$acc exit data delete(layerThicknessCur)
-         !$acc exit data delete(normalBaroclinicVelocityNew)
          !$acc exit data delete(normalBarotropicVelocityNew)
+         !$acc exit data delete(normalBaroclinicVelocityNew)
          if (config_use_freq_filtered_thickness) then
             !$acc exit data copyout(lowFreqDivergenceNew)
             !$acc exit data delete(lowFreqDivergenceCur)
@@ -2141,7 +2140,6 @@ module ocn_time_integration_split
             !$acc exit data copyout(normalVelocityNew)
             !$acc exit data delete(normalBaroclinicVelocityCur)
             !$acc exit data delete(latCell)
-            !$acc exit data copyout(layerThicknessNew)
             if (config_compute_active_tracer_budgets) then
                !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
                !$acc update host(activeTracerHorizontalAdvectionTendency)
