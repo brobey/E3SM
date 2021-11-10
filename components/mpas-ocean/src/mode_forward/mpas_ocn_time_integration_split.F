@@ -1625,7 +1625,6 @@ module ocn_time_integration_split
 
          if (splitExplicitStep == numTSIterations) then
             !$acc enter data copyin(normalBaroclinicVelocityCur)
-            !$acc enter data copyin(latCell)
             if (config_compute_active_tracer_budgets) then
                !$acc update device(activeTracerHorizontalAdvectionEdgeFlux)
                !$acc update device(activeTracerHorizontalAdvectionTendency)
@@ -2136,7 +2135,6 @@ module ocn_time_integration_split
          if (splitExplicitStep == numTSIterations) then
             !$acc exit data copyout(normalVelocityNew)
             !$acc exit data delete(normalBaroclinicVelocityCur)
-            !$acc exit data delete(latCell)
             if (config_compute_active_tracer_budgets) then
                !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
                !$acc update host(activeTracerHorizontalAdvectionTendency)
