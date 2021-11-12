@@ -5006,6 +5006,41 @@ module mpas_pool_routines
 
    end subroutine mpas_pool_add_dimension_1d!}}}
 
+!-----------------------------------------------------------------------
+!  subroutine mpas_pool_get_dimension_scalar
+!
+!> \brief MPAS Pool Scalar Dimension Access subroutine
+!> \author Michael Duda, Doug Jacobsen
+!> \date   03/27/2014
+!> \details
+!> This subroutine returns the scalar value of the 0D dimension associated with key in
+!>  inPool.
+!
+!-----------------------------------------------------------------------
+   subroutine mpas_pool_get_dimension_scalar(inPool, key, dim)!{{{
+
+      implicit none
+
+      type (mpas_pool_type), intent(in) :: inPool
+      character (len=*), intent(in) :: key
+      integer :: dim
+
+      type (mpas_pool_data_type), pointer :: mem
+
+      mem => pool_get_member(inPool, key, MPAS_POOL_DIMENSION)
+
+      if (associated(mem)) then
+         if (mem % contentsDims /= 0) then
+            call pool_mesg('Error: Dimension '//trim(key)//' is not a scalar.')
+         else
+            dim = mem % simple_int
+         end if
+      else
+         call pool_mesg('Error: Dimension '//trim(key)//' not found in pool.')
+      end if
+
+   end subroutine mpas_pool_get_dimension_scalar!}}}
+
 
 !-----------------------------------------------------------------------
 !  subroutine mpas_pool_get_dimension_0d

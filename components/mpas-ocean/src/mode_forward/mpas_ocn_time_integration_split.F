@@ -221,13 +221,11 @@ module ocn_time_integration_split
          tracersGroupCur,      &! old, new tracer arrays
          tracersGroupNew
 
-      integer, pointer :: &
+      integer :: &
          startIndex, endIndex, &! start, end index for tracer groups
          indexSalinity          ! tracer index for salinity
 
-      integer :: startIndex_val, endIndex_val
       integer :: reset_debugTracers_top_nLayers
-      integer :: indexSalinityVal
       integer :: iTracer, numTracers, numActiveTracers
 
       type (mpas_pool_iterator_type) :: &
@@ -354,8 +352,8 @@ module ocn_time_integration_split
       call mpas_pool_get_array(statePool, 'lowFreqDivergence', &
                                            lowFreqDivergenceNew, 2)
 
-      call mpas_pool_get_dimension(tracersPool, 'index_salinity', &
-                                                 indexSalinity)
+      call mpas_pool_get_dimension_scalar(tracersPool, 'index_salinity', &
+                                                        indexSalinity)
 
       !*** Retrieve tendency variables
 
@@ -1646,13 +1644,10 @@ module ocn_time_integration_split
          if (splitExplicitStep < numTSIterations) then
 
             ! Get indices for dynamic tracers (Includes T&S).
-            call mpas_pool_get_dimension(tracersPool,'activeGRP_start',&
-                                                      startIndex)
-            call mpas_pool_get_dimension(tracersPool,'activeGRP_end', &
-                                                      endIndex)
-
-            startIndex_val = startIndex
-            endIndex_val   = endIndex
+            call mpas_pool_get_dimension_scalar(tracersPool,'activeGRP_start',&
+                                                             startIndex)
+            call mpas_pool_get_dimension_scalar(tracersPool,'activeGRP_end', &
+                                                             endIndex)
 
             ! Only need T & S for earlier iterations,
             ! then all the tracers needed the last time through.
@@ -1680,7 +1675,7 @@ module ocn_time_integration_split
                layerThicknessNew(k,iCell) = 0.5* &
                (layerThicknessCur(k,iCell) + temp_h)
 
-               do i = startIndex_val, endIndex_val
+               do i = startIndex, endIndex
                   ! This is Phi at n+1
                   temp = (activeTracersCur(i,k,iCell)* &
                           layerThicknessCur(k,iCell) + dt* &
@@ -1926,8 +1921,6 @@ module ocn_time_integration_split
                      if (trim(groupItr%memberName) == &
                          'activeTracers' ) then
 
-                        indexSalinityVal = indexSalinity
-
 #ifdef MPAS_OPENACC
                         !$acc parallel loop present(minLevelCell, maxLevelCell, tracersGroupNew)
 #else
@@ -1936,9 +1929,9 @@ module ocn_time_integration_split
 #endif
                         do iCell = 1, nCellsAll
                         do k = minLevelCell(iCell), maxLevelCell(iCell)
-                           tracersGroupNew(indexSalinityVal,k,iCell) = &
+                           tracersGroupNew(indexSalinity,k,iCell) = &
                            max(0.001_RKIND,  &
-                           tracersGroupNew(indexSalinityVal,k,iCell))
+                           tracersGroupNew(indexSalinity,k,iCell))
                         end do
                         end do
 #ifndef MPAS_OPENACC

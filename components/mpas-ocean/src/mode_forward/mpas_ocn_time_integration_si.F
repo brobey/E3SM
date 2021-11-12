@@ -2720,8 +2720,12 @@ module ocn_time_integration_si
 
             if (config_use_freq_filtered_thickness) then
 
+#ifdef MPAS_OPENACC
+               !$acc parallel loop present(minLevelCell, maxLevelCell)
+#else
                !$omp parallel
                !$omp do schedule(runtime) private(k, temp)
+#endif
                do iCell = 1, nCellsAll
                do k = minLevelCell(iCell), maxLevelCell(iCell)
 
@@ -2741,30 +2745,12 @@ module ocn_time_integration_si
                            (lowFreqDivergenceCur(k,iCell) + temp)
                end do
                end do
+#ifndef MPAS_OPENACC
                !$omp end do
                !$omp end parallel
+#endif
             end if
 
-            !$omp parallel
-            !$omp do schedule(runtime) private(k)
-            do iEdge = 1, nEdgesAll
-            do k = 1, nVertLevels
-
-               ! u = normalBarotropicVelocity + normalBaroclinicVelocity
-               ! here normalBaroclinicVelocity is at time n+1/2
-               ! This is u used in next iteration or step
-               normalVelocityNew(k,iEdge) = edgeMask(k,iEdge)* &
-                         ( normalBarotropicVelocityNew(iEdge) + &
-                           normalBaroclinicVelocityNew(k,iEdge) )
-
-            enddo
-            end do ! iEdge
-            !$omp end do
-            !$omp end parallel
-
-            ! Efficiency note: We really only need this to compute
-            ! layerThickEdge, density, pressure, and SSH
-            ! in this diagnostics solve.
 #ifdef MPAS_OPENACC
             !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
             !$acc update device (normalTransportVelocity, &
@@ -2780,7 +2766,39 @@ module ocn_time_integration_si
                !$acc enter data copyin(landIcePressure)
                !$acc enter data copyin(landIceDraft)
             endif
+            !$acc enter data copyin(normalBarotropicVelocityNew, &
+            !$acc                   normalBaroclinicVelocityNew)
+            !$acc enter data create(normalVelocityNew)
+            if (config_use_freq_filtered_thickness) then
+            endif
 #endif
+
+#ifdef MPAS_OPENACC
+            !$acc parallel loop collapse(2)
+#else
+            !$omp parallel
+            !$omp do schedule(runtime) private(k)
+#endif
+            do iEdge = 1, nEdgesAll
+            do k = 1, nVertLevels
+
+               ! u = normalBarotropicVelocity + normalBaroclinicVelocity
+               ! here normalBaroclinicVelocity is at time n+1/2
+               ! This is u used in next iteration or step
+               normalVelocityNew(k,iEdge) = edgeMask(k,iEdge)* &
+                         ( normalBarotropicVelocityNew(iEdge) + &
+                           normalBaroclinicVelocityNew(k,iEdge) )
+
+            enddo
+            end do ! iEdge
+#ifndef MPAS_OPENACC
+            !$omp end do
+            !$omp end parallel
+#endif
+
+            ! Efficiency note: We really only need this to compute
+            ! layerThickEdge, density, pressure, and SSH
+            ! in this diagnostics solve.
             call ocn_diagnostic_solve(dt, statePool, forcingPool, &
                                       meshPool, scratchPool, &
                                       tracersPool, 2, full=.false.)
@@ -2811,6 +2829,9 @@ module ocn_time_integration_si
                !$acc exit data delete(landIceDraft)
             endif
             !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+            !$acc exit data delete(normalBarotropicVelocityNew, &
+            !$acc                  normalBaroclinicVelocityNew)
+            !$acc exit data copyout(normalVelocityNew)
 #endif
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
