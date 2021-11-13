@@ -1284,11 +1284,6 @@ contains
       real(kind=RKIND) :: surfaceLayerDepth
       real(kind=RKIND) :: sumSurfaceLayer
 
-      real(kind=RKIND) :: flux_attenuation_coefficient, flux_attenuation_coefficient_runoff
-
-      flux_attenuation_coefficient = config_flux_attenuation_coefficient
-      flux_attenuation_coefficient_runoff = config_flux_attenuation_coefficient_runoff
-
       !
       ! average tracer values over the ocean surface layer
       ! the ocean surface layer is generally assumed to be about 0.1 of the boundary layer depth
@@ -1405,8 +1400,8 @@ contains
       !$omp do schedule(runtime)
 #endif
       do iCell = 1, nCells
-         surfaceFluxAttenuationCoefficient(iCell) = flux_attenuation_coefficient
-         surfaceFluxAttenuationCoefficientRunoff(iCell) = flux_attenuation_coefficient_runoff
+         surfaceFluxAttenuationCoefficient(iCell) = varinp_flux_attenuation_coefficient
+         surfaceFluxAttenuationCoefficientRunoff(iCell) = varinp_flux_attenuation_coefficient_runoff
       end do
 #ifndef MPAS_OPENACC
       !$omp end do
