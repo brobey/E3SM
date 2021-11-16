@@ -1563,6 +1563,7 @@ module ocn_time_integration_split
          ! update halo for tracer tendencies
          call mpas_timer_start("se halo tracers")
 
+!!!real(kind... ), dimension(:,:,:) pointer :: newptr
          call mpas_pool_begin_iteration(tracersTendPool)
          do while (mpas_pool_get_next_member(tracersTendPool, &
                                              groupItr) )
@@ -1571,6 +1572,9 @@ module ocn_time_integration_split
                ! activeTracersOnly flag is true.
                if (.not. activeTracersOnly .or. &
                    trim(groupItr%memberName)=='activeTracersTend') then
+!!!                  call mpas_pool_get_array(tracersTendPool, groupItr%memberName, &
+!!!                                                newptr)
+!!!!!$acc update host(newptr)
                   call mpas_dmpar_field_halo_exch(domain, &
                                                   groupItr%memberName)
                end if
@@ -2324,6 +2328,57 @@ module ocn_time_integration_split
       call ocn_effective_density_in_land_ice_update(meshPool, &
                                        forcingPool, statePool, err)
 
+      !! Compute normalGMBolusVelocity; it will be added to
+      !! normalVelocity in Stage 2 of the next cycle.
+      !if (config_use_GM.or.config_use_Redi) then
+      !   call ocn_gm_compute_Bolus_velocity(statePool, diagnosticsPool,&
+      !                           meshPool, scratchPool, timeLevelIn=2)
+      !end if
+
+      call mpas_timer_start('se final mpas reconstruct', .false.)
+
+#ifdef MPAS_OPENACC
+      !$acc enter data create(velocityX, velocityY, velocityZ)
+      !$acc enter data create(velocityZonal, velocityMeridional)
+      !$acc enter data create(gradSSHX, gradSSHY, gradSSHZ)
+      !$acc enter data create(gradSSHZonal, gradSSHMeridional)
+      !$acc enter data create(surfaceVelocity, SSHGradient)
+#endif
+
+      call mpas_reconstruct_gpu(meshPool, normalVelocityNew,       &
+                                velocityX, velocityY, velocityZ,   &
+                                velocityZonal, velocityMeridional, &
+                                includeHalos = .true.)
+
+      call mpas_reconstruct_gpu(meshPool, gradSSH,               &
+                                gradSSHX, gradSSHY, gradSSHZ,    &
+                                gradSSHZonal, gradSSHMeridional, &
+                                includeHalos = .true.)
+
+      call mpas_timer_stop('se final mpas reconstruct')
+
+#ifdef MPAS_OPENACC
+      !$acc parallel loop present(surfaceVelocity, velocityZonal, velocityMeridional, &
+      !$acc   SSHGradient, gradSSHZonal, gradSSHMeridional)
+#else
+      !$omp parallel
+      !$omp do schedule(runtime)
+#endif
+      do iCell = 1, nCellsAll
+         surfaceVelocity(indexSurfaceVelocityZonal,iCell) = &
+                                   velocityZonal(minLevelCell(iCell),iCell)
+         surfaceVelocity(indexSurfaceVelocityMeridional,iCell) = &
+                                   velocityMeridional(minLevelCell(iCell),iCell)
+
+         SSHGradient(indexSSHGradientZonal,iCell) = gradSSHZonal(iCell)
+         SSHGradient(indexSSHGradientMeridional,iCell) = &
+                                               gradSSHMeridional(iCell)
+      end do
+#ifndef MPAS_OPENACC
+      !$omp end do
+      !$omp end parallel
+#endif
+
 #ifdef MPAS_OPENACC
       !$acc update host(layerThickEdge)
       !$acc update host(relativeVorticity, circulation)
@@ -2350,45 +2405,14 @@ module ocn_time_integration_split
          !$acc exit data delete(landIcePressure)
          !$acc exit data delete(landIceDraft)
       endif
-      !$acc exit data delete(layerThicknessNew, normalVelocityNew)
+      !$acc exit data copyout(layerThicknessNew, normalVelocityNew)
       !$acc exit data delete(layerThicknessCur, normalVelocityCur)
+      !$acc exit data copyout(velocityX, velocityY, velocityZ)
+      !$acc exit data copyout(gradSSHX, gradSSHY, gradSSHZ)
+      !$acc exit data copyout(velocityZonal, velocityMeridional)
+      !$acc exit data copyout(gradSSHZonal, gradSSHMeridional)
+      !$acc exit data copyout(surfaceVelocity, SSHGradient)
 #endif
-
-      !! Compute normalGMBolusVelocity; it will be added to
-      !! normalVelocity in Stage 2 of the next cycle.
-      !if (config_use_GM.or.config_use_Redi) then
-      !   call ocn_gm_compute_Bolus_velocity(statePool, diagnosticsPool,&
-      !                           meshPool, scratchPool, timeLevelIn=2)
-      !end if
-
-      call mpas_timer_start('se final mpas reconstruct', .false.)
-
-      call mpas_reconstruct(meshPool, normalVelocityNew,  &
-                            velocityX, velocityY, velocityZ,   &
-                            velocityZonal, velocityMeridional, &
-                            includeHalos = .true.)
-
-      call mpas_reconstruct(meshPool, gradSSH,               &
-                            gradSSHX, gradSSHY, gradSSHZ,    &
-                            gradSSHZonal, gradSSHMeridional, &
-                            includeHalos = .true.)
-
-      call mpas_timer_stop('se final mpas reconstruct')
-
-      !$omp parallel
-      !$omp do schedule(runtime)
-      do iCell = 1, nCellsAll
-         surfaceVelocity(indexSurfaceVelocityZonal,iCell) = &
-                                   velocityZonal(minLevelCell(iCell),iCell)
-         surfaceVelocity(indexSurfaceVelocityMeridional,iCell) = &
-                                   velocityMeridional(minLevelCell(iCell),iCell)
-
-         SSHGradient(indexSSHGradientZonal,iCell) = gradSSHZonal(iCell)
-         SSHGradient(indexSSHGradientMeridional,iCell) = &
-                                               gradSSHMeridional(iCell)
-      end do
-      !$omp end do
-      !$omp end parallel
 
       call ocn_time_average_coupled_accumulate(statePool,forcingPool,2)
 
