@@ -137,6 +137,11 @@ contains
          end do
       end if
 
+#ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThickness, normalVelocity)
+      !$acc update device (normalTransportVelocity, &
+      !$acc                normalGMBolusVelocity)
+#endif
       call ocn_diagnostic_solve(dt,  statePool, forcingPool, meshPool, scratchPool, tracersPool)
 
       layerThickness(:, nCells+1) = 0.0_RKIND

@@ -1652,6 +1652,11 @@ module ocn_time_integration_split
             ! Efficiency note: We really only need this to compute
             ! layerThickEdge, density, pressure, and SSH
             ! in this diagnostics solve.
+#ifdef MPAS_OPENACC
+            !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+            !$acc update device (normalTransportVelocity, &
+            !$acc                normalGMBolusVelocity)
+#endif
             call ocn_diagnostic_solve(dt, statePool, forcingPool, &
                                       meshPool, scratchPool, &
                                       tracersPool, 2, full=.false.)
@@ -1896,6 +1901,11 @@ module ocn_time_integration_split
       ! For kpp, more variables may be needed.  Either way, this could
       ! be made more efficient by only computing what is needed for the
       ! implicit vmix routine that follows.
+#ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+      !$acc update device (normalTransportVelocity, &
+      !$acc                normalGMBolusVelocity)
+#endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
 
@@ -1985,6 +1995,11 @@ module ocn_time_integration_split
          !$omp end parallel
       end if
 
+#ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+      !$acc update device (normalTransportVelocity, &
+      !$acc                normalGMBolusVelocity)
+#endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
 

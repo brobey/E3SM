@@ -687,6 +687,11 @@ module ocn_time_integration_rk4
            end do
          end if
 
+#ifdef MPAS_OPENACC
+         !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+         !$acc update device (normalTransportVelocity, &
+         !$acc                normalGMBolusVelocity)
+#endif
          call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
 
          ! Update the effective desnity in land ice if we're coupling to land ice
@@ -1193,6 +1198,11 @@ module ocn_time_integration_rk4
          !$omp end parallel
       end if
 
+#ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThicknessCur, normalVelocityCur)
+      !$acc update device (normalTransportVelocity, &
+      !$acc                normalGMBolusVelocity)
+#endif
       call ocn_diagnostic_solve(dt, provisStatePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
 
       ! ------------------------------------------------------------------
@@ -1408,6 +1418,11 @@ module ocn_time_integration_rk4
          end if
       end do
 
+#ifdef MPAS_OPENACC
+      !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+      !$acc update device (normalTransportVelocity, &
+      !$acc                normalGMBolusVelocity)
+#endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
 
       call ocn_vmix_implicit(dt, meshPool, statePool, forcingPool, scratchPool, err, 2)

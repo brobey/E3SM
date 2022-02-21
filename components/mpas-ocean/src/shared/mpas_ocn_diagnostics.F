@@ -192,9 +192,9 @@ contains
       !! ocn_diagnostic_solve_ssh                :: ssh, (not on device)
       !!                                            landIceDraft (not on device)
 
-      !$acc enter data copyin(layerThickness, normalVelocity)
-      !$acc update device (normalTransportVelocity, &
-      !$acc                normalGMBolusVelocity)
+!     !$acc enter data copyin(layerThickness, normalVelocity)
+!     !$acc update device (normalTransportVelocity, &
+!     !$acc                normalGMBolusVelocity)
 
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 

@@ -280,6 +280,9 @@ module ocn_analysis_mode
       character (len=StrKIND), pointer :: config_dt
       logical, pointer :: config_write_output_on_startup
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        layerThickness, normalVelocity
+
       ierr = 0
 
       call mpas_pool_get_config(ocnConfigs, 'config_dt', config_dt)
@@ -301,6 +304,14 @@ module ocn_analysis_mode
          call mpas_pool_get_subpool(block_ptr % structs, 'mesh', meshPool)
          call mpas_pool_get_subpool(block_ptr % structs, 'scratch', scratchPool)
 
+         call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 1)
+         call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
+
+#ifdef MPAS_OPENACC
+         !$acc enter data copyin(layerThickness, normalVelocity)
+         !$acc update device (normalTransportVelocity, &
+         !$acc                normalGMBolusVelocity)
+#endif
          call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
          block_ptr => block_ptr % next
       end do
