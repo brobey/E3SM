@@ -314,6 +314,9 @@ module ocn_time_integration_si
          iter,       &! Number of solver iterations
          siLargeIter  ! Index of the large btr system iteration
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        seaIcePressure, atmosphericPressure
+
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
       ! indexSSHGradientZonal, indexSSHGradientMeridional
@@ -523,6 +526,8 @@ module ocn_time_integration_si
 
       call mpas_timer_stop("si prep")
 
+      call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+      call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! BEGIN large outer timestep iteration loop
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2754,6 +2759,7 @@ module ocn_time_integration_si
             !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
             !$acc update device (normalTransportVelocity, &
             !$acc                normalGMBolusVelocity)
+            !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
             call ocn_diagnostic_solve(dt, statePool, forcingPool, &
                                       meshPool, scratchPool, &
@@ -2998,10 +3004,15 @@ module ocn_time_integration_si
       ! For kpp, more variables may be needed.  Either way, this could
       ! be made more efficient by only computing what is needed for the
       ! implicit vmix routine that follows.
+
+      call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+      call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
+
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
+      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
@@ -3096,6 +3107,7 @@ module ocn_time_integration_si
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
+      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)

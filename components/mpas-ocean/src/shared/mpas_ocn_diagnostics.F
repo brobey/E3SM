@@ -196,7 +196,7 @@ contains
 !     !$acc update device (normalTransportVelocity, &
 !     !$acc                normalGMBolusVelocity)
 
-      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+!     !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 
       !$acc enter data copyin(activeTracers, ssh)
       !$acc update device(tracersSurfaceValue)

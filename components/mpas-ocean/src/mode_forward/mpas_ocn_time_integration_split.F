@@ -249,6 +249,9 @@ module ocn_time_integration_split
       ! Forcing pool
       real (kind=RKIND), dimension(:), pointer :: tidalPotentialEta
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        seaIcePressure, atmosphericPressure
+
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
       ! indexSSHGradientZonal, indexSSHGradientMeridional
@@ -456,6 +459,9 @@ module ocn_time_integration_split
       endif
 
       call mpas_timer_stop("se prep")
+
+      call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+      call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! BEGIN large outer timestep iteration loop
@@ -1656,6 +1662,7 @@ module ocn_time_integration_split
             !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
             !$acc update device (normalTransportVelocity, &
             !$acc                normalGMBolusVelocity)
+            !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
             call ocn_diagnostic_solve(dt, statePool, forcingPool, &
                                       meshPool, scratchPool, &
@@ -1905,6 +1912,7 @@ module ocn_time_integration_split
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
+      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)
@@ -1999,6 +2007,7 @@ module ocn_time_integration_split
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
+      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, &
                                 scratchPool, tracersPool, 2)

@@ -186,6 +186,9 @@ module ocn_time_integration_rk4
       real (kind=RKIND), dimension(:,:), pointer :: restingThickness
       real (kind=RKIND) :: totalDepth
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        seaIcePressure, atmosphericPressure
+
       ! Get config options
       call mpas_pool_get_config(domain % configs, 'config_mom_del4', config_mom_del4)
       call mpas_pool_get_config(domain % configs, 'config_filter_btr_mode', config_filter_btr_mode)
@@ -687,10 +690,13 @@ module ocn_time_integration_rk4
            end do
          end if
 
+         call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+         call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
 #ifdef MPAS_OPENACC
          !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
          !$acc update device (normalTransportVelocity, &
          !$acc                normalGMBolusVelocity)
+         !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
          call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
 
@@ -1079,6 +1085,9 @@ module ocn_time_integration_rk4
       character (len=StrKIND) :: modifiedGroupName
       character (len=StrKIND) :: configName
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        seaIcePressure, atmosphericPressure
+
       err = 0
 
       call mpas_pool_get_config(block % configs, 'config_prescribe_velocity', config_prescribe_velocity)
@@ -1198,10 +1207,13 @@ module ocn_time_integration_rk4
          !$omp end parallel
       end if
 
+      call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+      call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(layerThicknessCur, normalVelocityCur)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
+      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
       call ocn_diagnostic_solve(dt, provisStatePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
 
@@ -1377,6 +1389,9 @@ module ocn_time_integration_rk4
 
       logical, pointer :: config_use_GM
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        seaIcePressure, atmosphericPressure
+
       err = 0
 
       call mpas_pool_get_config(block % configs, 'config_use_GM', config_use_GM)
@@ -1400,6 +1415,9 @@ module ocn_time_integration_rk4
       call mpas_pool_get_array(meshPool, 'minLevelCell', minLevelCell)
       call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
 
+      call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+      call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
+
       call mpas_pool_begin_iteration(tracersPool)
       do while ( mpas_pool_get_next_member(tracersPool, groupItr) )
          if ( groupItr % memberType == MPAS_POOL_FIELD ) then
@@ -1422,6 +1440,7 @@ module ocn_time_integration_rk4
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
+      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
       call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 2)
 

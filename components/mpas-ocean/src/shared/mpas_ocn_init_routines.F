@@ -110,6 +110,9 @@ contains
 
       integer, pointer :: nCells, nEdges, nVertices, nVertLevels
 
+      real (kind=RKIND), dimension(:), pointer :: &
+        seaIcePressure, atmosphericPressure
+
       type (mpas_pool_iterator_type) :: groupItr
 
       call mpas_pool_get_dimension(block % dimensions, 'nCells', nCells)
@@ -129,6 +132,8 @@ contains
       call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
       call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 1)
 
+      call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+      call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
 
       if (.not. config_do_restart) then
          do iCell=1,nCells
@@ -141,6 +146,7 @@ contains
       !$acc enter data copyin(layerThickness, normalVelocity)
       !$acc update device (normalTransportVelocity, &
       !$acc                normalGMBolusVelocity)
+      !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
       call ocn_diagnostic_solve(dt,  statePool, forcingPool, meshPool, scratchPool, tracersPool)
 

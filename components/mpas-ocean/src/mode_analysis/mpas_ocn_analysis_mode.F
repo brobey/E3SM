@@ -281,6 +281,9 @@ module ocn_analysis_mode
       logical, pointer :: config_write_output_on_startup
 
       real (kind=RKIND), dimension(:), pointer :: &
+        seaIcePressure, atmosphericPressure
+
+      real (kind=RKIND), dimension(:), pointer :: &
         layerThickness, normalVelocity
 
       ierr = 0
@@ -304,6 +307,9 @@ module ocn_analysis_mode
          call mpas_pool_get_subpool(block_ptr % structs, 'mesh', meshPool)
          call mpas_pool_get_subpool(block_ptr % structs, 'scratch', scratchPool)
 
+         call mpas_pool_get_array(forcingPool, 'seaIcePressure', seaIcePressure)
+         call mpas_pool_get_array(forcingPool, 'atmosphericPressure', atmosphericPressure)
+
          call mpas_pool_get_array(statePool, 'layerThickness', layerThickness, 1)
          call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
 
@@ -311,6 +317,7 @@ module ocn_analysis_mode
          !$acc enter data copyin(layerThickness, normalVelocity)
          !$acc update device (normalTransportVelocity, &
          !$acc                normalGMBolusVelocity)
+         !$acc enter data copyin(atmosphericPressure, seaIcePressure)
 #endif
          call ocn_diagnostic_solve(dt, statePool, forcingPool, meshPool, scratchPool, tracersPool, 1)
          block_ptr => block_ptr % next
