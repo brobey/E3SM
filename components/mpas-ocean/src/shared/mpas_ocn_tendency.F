@@ -347,15 +347,15 @@ contains
                                              sfcStressMag)
 
       !*** Transfer data to device
-      !$acc update device(zMid, divergence, relativeVorticity, normPlanetVortEdge, &
-      !$acc               density, normRelVortEdge, montgomeryPotential, pressure, &
-      !$acc               thermExpCoeff, salineContractCoeff, tangentialVelocity, &
-      !$acc               layerThickEdgeFlux, kineticEnergyCell, sfcFlxAttCoeff, potentialDensity, &
-      !$acc               vertAleTransportTop, vertViscTopOfEdge, wettingVelocity)
-      !$acc enter data &
-      !$acc    copyin(tendVel, sfcStress, sfcStressMag, &
-      !$acc    ssh, normalVelocity, &
-      !$acc    layerThickness, activeTracers)
+!!!   !$acc update device(zMid, divergence, relativeVorticity, normPlanetVortEdge, &
+!!!   !$acc update device(density, normRelVortEdge, montgomeryPotential, pressure, &
+!!!   !$acc               thermExpCoeff, salineContractCoeff, tangentialVelocity, &
+!!!   !$acc               layerThickEdgeFlux, kineticEnergyCell, sfcFlxAttCoeff, potentialDensity, &
+!!!   !$acc               vertAleTransportTop, vertViscTopOfEdge, wettingVelocity)
+!!!   !$acc enter data &
+!!!   !$acc    copyin(tendVel, sfcStress, sfcStressMag, &
+!!!   !$acc    copyin(ssh, normalVelocity, &
+!!!   !$acc    layerThickness, activeTracers)
 
       !*** Set output variables to zero before accumulating results
       
@@ -469,11 +469,11 @@ contains
 #endif
 
       !*** Transfer any needed data back to host and delete inputs
-      !$acc exit data &
-      !$acc    copyout(tendVel, sfcStress, sfcStressMag) &
-      !$acc    delete( &
-      !$acc    ssh, normalVelocity, &
-      !$acc    layerThickness, activeTracers)
+!!    !$acc exit data &
+!!    !$acc    copyout(tendVel, sfcStress, sfcStressMag) &
+!!    !$acc    delete( &
+!!    !$acc    ssh, normalVelocity, &
+!!    !$acc    layerThickness, activeTracers)
 
       ! stop the timer and exit
 

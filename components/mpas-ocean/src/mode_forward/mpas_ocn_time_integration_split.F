@@ -261,7 +261,13 @@ module ocn_time_integration_split
       real (kind=RKIND), dimension(:), pointer :: &
         frazilSurfacePressure, landIcePressure, landIceDraft
 
-      real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersNew
+      real (kind=RKIND), dimension(:,:,:), pointer :: &
+         activeTracersCur, &
+         activeTracersNew
+
+      real (kind=RKIND), dimension(:), pointer, contiguous :: &
+         surfaceStress,         &!< [out] surface stress at edges
+         surfaceStressMagnitude  !< [out] surface stress magnitude (on cell)
 
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
@@ -365,14 +371,20 @@ module ocn_time_integration_split
                                           sshTend)
       call mpas_pool_get_array(tendPool, 'layerThickness', &
                                           layerThicknessTend)
-      call mpas_pool_get_array(tendPool, 'normalVelocity', &
-                                          normalVelocityTend)
       call mpas_pool_get_array(tendPool, 'highFreqThickness', &
                                           highFreqThicknessTend)
       call mpas_pool_get_array(tendPool, 'lowFreqDivergence', &
                                           lowFreqDivergenceTend)
 
-      call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracersNew, 2)
+      call mpas_pool_get_array(tracersPool, 'activeTracers', &
+                                             activeTracersCur, 1)
+      call mpas_pool_get_array(tracersPool, 'activeTracers', &
+                                             activeTracersNew, 2)
+
+      call mpas_pool_get_array(forcingPool, 'surfaceStress', &
+                                             surfaceStress)
+      call mpas_pool_get_array(forcingPool, 'surfaceStressMagnitude', &
+                                             surfaceStressMagnitude)
 
       if (config_transport_tests_flow_id > 0) then
         ! This is a transport test. Write advection velocity from prescribed
@@ -601,6 +613,18 @@ module ocn_time_integration_split
             !$acc enter data create(highFreqThicknessNew)
             !$acc enter data copyin(highFreqThicknessCur, highFreqThicknessTend)
          endif
+
+         !$acc update device(zMid, divergence, relativeVorticity, normPlanetVortEdge, &
+         !$acc               density, normRelVortEdge, montgomeryPotential, pressure, &
+         !$acc               thermExpCoeff, salineContractCoeff, tangentialVelocity, &
+         !$acc               kineticEnergyCell, sfcFlxAttCoeff, potentialDensity, &
+         !$acc               vertAleTransportTop, vertViscTopOfEdge, wettingVelocity)
+         !$acc enter data copyin(normalVelocityTend, surfaceStress, surfaceStressMagnitude)
+         if (stage1_tend_time .eq. 1) then
+            !$acc  enter data copyin(activeTracersCur)
+         else if (stage1_tend_time .eq. 2) then
+            !$acc  enter data copyin(sshNew, normalVelocityNew, layerThicknessNew, activeTracersNew)
+         endif
 #endif
 
          ! ---  update halos for diagnostic ocean boundary layer depth
@@ -688,16 +712,26 @@ module ocn_time_integration_split
          endif
 
 #ifdef MPAS_OPENACC
-         !$acc exit data delete(layerThicknessCur, normalVelocityCur, sshCur)
          !$acc update host(vertAleTransportTop)
+#endif
+
+         call ocn_tend_vel(domain, tendPool, statePool, forcingPool, &
+                           stage1_tend_time, domain % dminfo, dt)
+
+#ifdef MPAS_OPENACC
+         !$acc exit data copyout(normalVelocityTend, surfaceStress, surfaceStressMagnitude)
+         if (stage1_tend_time .eq. 1) then
+            !$acc  exit data delete(activeTracersCur)
+         else if (stage1_tend_time .eq. 2) then
+            !$acc  exit data delete(sshNew, normalVelocityNew, layerThicknessNew, activeTracersNew)
+         endif
+
+         !$acc exit data delete(layerThicknessCur, normalVelocityCur, sshCur)
          if (config_use_freq_filtered_thickness .or. associated(highFreqThicknessNew) ) then
             !$acc exit data copyout(highFreqThicknessNew)
             !$acc exit data delete(highFreqThicknessCur, highFreqThicknessTend)
          endif
 #endif
-
-         call ocn_tend_vel(domain, tendPool, statePool, forcingPool, &
-                           stage1_tend_time, domain % dminfo, dt)
 
          call mpas_timer_stop('se bcl vel tend')
 
