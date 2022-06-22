@@ -743,9 +743,17 @@ module ocn_time_integration_split
 
             call mpas_timer_start('bcl iters on linear Coriolis')
 
+#ifdef MPAS_OPENACC
+            !$acc enter data create(normalVelocityNew) copyin(normalBaroclinicVelocityNew)
+#endif
+
             ! Put f*normalBaroclinicVelocity^{perp} in
             ! normalVelocityNew as a work variable
             call ocn_fuperp(statePool, meshPool, 2)
+
+#ifdef MPAS_OPENACC
+            !$acc exit data copyout(normalVelocityNew) delete(normalBaroclinicVelocityNew)
+#endif
 
             !TODO: look at loop optimizations here
             ! Only need to loop over owned cells, since there is a halo
