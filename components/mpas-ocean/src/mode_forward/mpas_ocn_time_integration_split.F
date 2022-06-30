@@ -817,6 +817,10 @@ module ocn_time_integration_split
                enddo
 
             enddo ! iEdge
+#ifdef MPAS_OPENACC
+            !$acc update device(barotropicForcing)
+            !$acc enter data copyin(normalBaroclinicVelocityNew)
+#endif
             !$omp end do
             !$omp end parallel
 
@@ -828,6 +832,10 @@ module ocn_time_integration_split
             call mpas_timer_stop("se halo normalBaroclinicVelocity")
 
             call mpas_timer_stop('bcl iters on linear Coriolis')
+#ifdef MPAS_OPENACC
+            !$acc update host(barotropicForcing)
+            !$acc exit data delete(normalBaroclinicVelocityNew)
+#endif
 
          end do  ! do j=1,config_n_bcl_iter
 
@@ -860,10 +868,20 @@ module ocn_time_integration_split
             !    normalBarotropicVelocitySubcycle=0, and
             !    uNew=normalBaroclinicVelocityNew
 
+#ifdef MPAS_OPENACC
+            !$acc enter data create(normalBarotropicVelocityNew)
+            !$acc enter data copyin(normalBaroclinicVelocityNew, edgeMask, normalGMBolusVelocity)
+            !$acc parallel present(normalBaroclinicVelocityNew, normalBarotropicVelocityNew, edgeMask, normalGMBolusVelocity, normalTransportVelocity, normalVelocityNew, normalTransportVelocity)
+            !$acc loop gang
+#else
             !$omp parallel
             !$omp do schedule(runtime) private(k)
+#endif
             do iEdge = 1, nEdgesAll
                normalBarotropicVelocityNew(iEdge) = 0.0_RKIND
+#ifdef MPAS_OPENACC
+               !$acc loop vector
+#endif
                do k = 1, nVertLevels
                   normalVelocityNew(k, iEdge) = &
                      normalBaroclinicVelocityNew(k, iEdge)
@@ -876,8 +894,14 @@ module ocn_time_integration_split
 
                enddo ! vertical
             end do  ! iEdge
+#ifdef MPAS_OPENACC
+            !$acc end parallel
+            !$acc exit data copyout(normalVelocityNew, normalTransportVelocity, normalBarotropicVelocityNew)
+            !$acc exit data delete(normalBaroclinicVelocityNew)
+#else
             !$omp end do
             !$omp end parallel
+#endif
 
             call mpas_timer_stop('btr vel ue')
 
@@ -893,25 +917,61 @@ module ocn_time_integration_split
                                   normalBarotropicVelocitySubcycleCur, &
                                   oldBtrSubcycleTime)
 
+#ifdef MPAS_OPENACC
             if (config_filter_btr_mode) then
+               !!!$acc enter data create(barotropicForcing)
+            endif
+            !$acc enter data copyin(sshCur)
+            !$acc enter data create(sshSubcycleCur)
+            !$acc enter data copyin(normalBarotropicVelocityCur, normalBarotropicVelocityNew)
+            !$acc enter data create(normalBarotropicVelocitySubcycleCur)
+#endif
+
+#ifdef MPAS_OPENACC
+            !$acc parallel present(sshCur, &
+            !$acc                  sshSubcycleCur, &
+            !$acc                  barotropicThicknessFlux, &
+            !$acc                  normalBarotropicVelocityCur, &
+            !$acc                  normalBarotropicVelocitySubcycleCur, &
+            !$acc                  normalBarotropicVelocityNew, &
+            !$acc                  barotropicForcing)
+#endif
+
+            if (config_filter_btr_mode) then
+#ifdef MPAS_OPENACC
+               !$acc loop
+#else
                !$omp parallel
                !$omp do schedule(runtime)
+#endif
                do iEdge = 1, nEdgesAll
                   barotropicForcing(iEdge) = 0.0_RKIND
                end do
+#ifndef MPAS_OPENACC
                !$omp end do
                !$omp end parallel
+#endif
             endif
 
+#ifdef MPAS_OPENACC
+            !$acc loop
+#else
             !$omp parallel
             !$omp do schedule(runtime)
+#endif
             do iCell = 1, nCellsAll
                ! sshSubcycleOld = sshOld
                sshSubcycleCur(iCell) = sshCur(iCell)
             end do
+#ifndef MPAS_OPENACC
             !$omp end do
+#endif
 
+#ifdef MPAS_OPENACC
+            !$acc loop
+#else
             !$omp do schedule(runtime)
+#endif
             do iEdge = 1, nEdgesAll
 
                ! normalBarotropicVelocitySubcycleOld =
@@ -927,8 +987,24 @@ module ocn_time_integration_split
                ! barotropicThicknessFlux = 0
                barotropicThicknessFlux(iEdge) = 0.0_RKIND
             end do
+#ifdef MPAS_OPENACC
+            !$acc end parallel
+#else
             !$omp end do
             !$omp end parallel
+#endif
+
+#ifdef MPAS_OPENACC
+            if (config_filter_btr_mode) then
+               !!!$acc exit data copyout(barotropicForcing)
+               !$acc update host(barotropicForcing)
+            endif
+            !$acc exit data delete(sshCur)
+            !$acc exit data copyout(sshSubcycleCur)
+            !$acc exit data delete(normalBarotropicVelocityCur)
+            !$acc update host(barotropicThicknessFlux)
+            !$acc exit data copyout(normalBarotropicVelocitySubcycleCur, normalBarotropicVelocityNew)
+#endif
 
             call mpas_timer_stop('btr vel se init')
 
