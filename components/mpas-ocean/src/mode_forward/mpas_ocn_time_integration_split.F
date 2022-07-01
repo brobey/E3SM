@@ -269,6 +269,10 @@ module ocn_time_integration_split
          surfaceStress,         &!< [out] surface stress at edges
          surfaceStressMagnitude  !< [out] surface stress magnitude (on cell)
 
+      real (kind=RKIND), dimension(:), pointer, contiguous :: &
+         surfaceThicknessFlux,     &! surface thickness flux
+         surfaceThicknessFluxRunoff ! surface thickness flux from runoff
+
       ! These are public variables used from the diagnostics module
       ! indexSurfaceVelocityZonal, indexSurfaceVelocityMeridional
       ! indexSSHGradientZonal, indexSSHGradientMeridional
@@ -1724,6 +1728,14 @@ module ocn_time_integration_split
 
          endif ! split_explicit
 
+#ifdef MPAS_OPENACC
+         !$acc enter data copyin(layerThicknessCur, sshCur)
+         !$acc update device(layerThickEdgeFlux, normalTransportVelocity)
+         if (associated(highFreqThicknessNew)) then
+            !$acc enter data copyin(highFreqThicknessNew)
+         endif
+#endif
+
          call mpas_timer_stop("se btr vel")
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1749,32 +1761,29 @@ module ocn_time_integration_split
          ! layerThickEdgeFlux because layerThickness has not yet
          ! been computed for time level 2.
          call mpas_timer_start('thick vert trans vel top')
-#ifdef MPAS_OPENACC
-         !$acc enter data copyin(layerThicknessCur, sshCur)
-         !$acc update device(layerThickEdgeFlux, normalTransportVelocity)
-#endif
+
          if (associated(highFreqThicknessNew)) then
-#ifdef MPAS_OPENACC
-            !$acc enter data copyin(highFreqThicknessNew)
-#endif
             call ocn_vert_transport_velocity_top(meshPool, &
                  verticalMeshPool, layerThicknessCur, &
                  layerThickEdgeFlux, normalTransportVelocity, sshCur, &
                  dt, vertAleTransportTop, err, highFreqThicknessNew)
-#ifdef MPAS_OPENACC
-            !$acc exit data delete(highFreqThicknessNew)
-#endif
          else
             call ocn_vert_transport_velocity_top(meshPool, &
                  verticalMeshPool, layerThicknessCur, &
                  layerThickEdgeFlux, normalTransportVelocity, sshCur, &
                  dt, vertAleTransportTop, err)
          endif
-#ifdef MPAS_OPENACC
-         !$acc exit data delete(layerThicknessCur, sshCur)
-         !$acc update host(vertAleTransportTop, normalTransportVelocity)
-#endif
+
          call mpas_timer_stop('thick vert trans vel top')
+
+         call mpas_pool_get_array(forcingPool, 'surfaceThicknessFlux', &
+                                                surfaceThicknessFlux)
+         call mpas_pool_get_array(forcingPool, 'surfaceThicknessFluxRunoff', &
+                                                surfaceThicknessFluxRunoff)
+
+#ifdef MPAS_OPENACC
+         !$acc enter data create(layerThicknessTend, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
+#endif
 
          call ocn_tend_thick(tendPool, forcingPool)
 
@@ -1788,21 +1797,23 @@ module ocn_time_integration_split
          call mpas_timer_stop("se halo thickness")
 
          call mpas_timer_start('se tracer tend', .false.)
+#ifdef MPAS_OPENACC
+         !$acc exit data copyout(layerThicknessTend, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
+         if (associated(highFreqThicknessNew)) then
+            !$acc exit data delete(highFreqThicknessNew)
+         endif
+         !$acc exit data delete(layerThicknessCur, sshCur)
+
+         !$acc enter data copyin(layerThicknessNew)
+         !$acc update device(layerThickEdgeFlux)
+#endif
+
          call ocn_tend_tracer(tendPool, statePool, forcingPool, &
                               meshPool, swForcingPool, &
                               dt, activeTracersOnly, 2)
 
-         call mpas_pool_get_array(tracersPool, 'activeTracers', &
-                                                tracersGroupCur, 1)
-         call mpas_pool_get_array(tracersPool, 'activeTracers', &
-                                                tracersGroupNew, 2)
-         call mpas_pool_get_array(statePool,   'normalVelocity', &
-                                                normalVelocityCur, 1)
-         call mpas_pool_get_array(tracersTendPool,'activeTracersTend', &
-                                                   activeTracersTend)
-
 #ifdef MPAS_OPENACC
-         !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
+         !$acc enter data copyin(normalVelocityNew)
          !$acc enter data copyin(normalBarotropicVelocityNew, &
          !$acc                   normalBaroclinicVelocityNew)
          !$acc enter data copyin(activeTracersNew)
@@ -1845,6 +1856,14 @@ module ocn_time_integration_split
          endif
 #endif
 
+         call mpas_pool_get_array(tracersPool, 'activeTracers', &
+                                                tracersGroupCur, 1)
+         call mpas_pool_get_array(tracersPool, 'activeTracers', &
+                                                tracersGroupNew, 2)
+         call mpas_pool_get_array(statePool,   'normalVelocity', &
+                                                normalVelocityCur, 1)
+         call mpas_pool_get_array(tracersTendPool,'activeTracersTend', &
+                                                   activeTracersTend)
          call mpas_timer_stop('se tracer tend')
 
          ! update halo for tracer tendencies

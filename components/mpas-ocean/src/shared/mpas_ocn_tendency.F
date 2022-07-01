@@ -163,7 +163,7 @@ contains
       !    initialize to zero and start accumulating tendency terms
       !
 #ifdef MPAS_OPENACC
-      !$acc enter data create(tendThick, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
+!     !$acc enter data create(tendThick, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
 
       !$acc parallel loop &
       !$acc     present(tendThick, surfaceThicknessFlux, surfaceThicknessFluxRunoff) &
@@ -226,7 +226,7 @@ contains
                                              tendThick, err)
 
 #ifdef MPAS_OPENACC
-      !$acc exit data copyout(tendThick, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
+!     !$acc exit data copyout(tendThick, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
 #endif
 
       call mpas_timer_stop("ocn_tend_thick")
@@ -659,12 +659,12 @@ contains
       ! allocate and transfer data not specific to tracer groups
       allocate(normalThicknessFlux(nVertLevels, nEdgesAll+1))
 
-      !$acc enter data create(normalThicknessFlux) &
-      !$acc            copyin(layerThickness)
-      !TEMPORARY - once diagnotics module ported, these should already
-      !            be on the device
-      !$acc update device (normalTransportVelocity, layerThickEdgeFlux, &
-      !$acc                vertAleTransportTop)
+      !$acc enter data create(normalThicknessFlux) !&
+!     !$acc            copyin(layerThickness)
+!     !TEMPORARY - once diagnotics module ported, these should already
+!     !            be on the device
+!     !$acc update device (normalTransportVelocity, layerThickEdgeFlux, &
+!     !$acc                vertAleTransportTop)
 
       ! compute transport velocity to use for all tracers
 #ifdef MPAS_OPENACC
@@ -1296,8 +1296,8 @@ contains
       end if ! member is field
       end do ! loop over tracer groups
 
-      !$acc exit data delete (normalThicknessFlux, layerThickness)
-
+!     !$acc exit data delete (layerThickness)
+      !$acc exit data delete (normalThicknessFlux)
       deallocate(normalThicknessFlux)
 
       call mpas_timer_stop("ocn_tend_tracer")
