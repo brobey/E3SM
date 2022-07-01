@@ -375,8 +375,6 @@ module ocn_time_integration_split
                                           sshTend)
       call mpas_pool_get_array(tendPool, 'layerThickness', &
                                           layerThicknessTend)
-      call mpas_pool_get_array(tendPool, 'highFreqThickness', &
-                                          highFreqThicknessTend)
       call mpas_pool_get_array(tendPool, 'lowFreqDivergence', &
                                           lowFreqDivergenceTend)
 
@@ -1776,6 +1774,11 @@ module ocn_time_integration_split
                !$acc update device(activeTracerNonLocalTendency)
             endif
          endif
+         if (splitExplicitStep < numTSIterations) then
+            if (config_use_freq_filtered_thickness .or. associated(highFreqThicknessNew) ) then
+               !$acc enter data copyin(highFreqThicknessCur)
+            endif
+         endif
 #endif
 
          call mpas_timer_stop("se btr vel")
@@ -1835,26 +1838,6 @@ module ocn_time_integration_split
                               meshPool, swForcingPool, &
                               dt, activeTracersOnly, 2)
 
-#ifdef MPAS_OPENACC
-         !$acc exit data copyout(layerThicknessTend, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
-         if (associated(highFreqThicknessNew)) then
-            !$acc exit data delete(highFreqThicknessNew)
-         endif
-         !$acc exit data delete(layerThicknessCur, sshCur)
-#endif
-
-#ifdef MPAS_OPENACC
-         if (splitExplicitStep < numTSIterations) then
-            if (config_use_freq_filtered_thickness) then
-               !$acc enter data copyin(highFreqThicknessNew)
-               !$acc enter data copyin(highFreqThicknessCur)
-            endif
-         elseif (splitExplicitStep == numTSIterations) then
-            !$acc enter data copyin(layerThicknessCur)
-            !$acc enter data copyin(layerThicknessTend)
-         endif
-#endif
-
          call mpas_pool_get_array(tracersPool, 'activeTracers', &
                                                 tracersGroupCur, 1)
          call mpas_pool_get_array(tracersPool, 'activeTracers', &
@@ -1884,6 +1867,12 @@ module ocn_time_integration_split
          call mpas_timer_stop("se halo tracers")
 
          call mpas_timer_start('se loop fini')
+
+#ifdef MPAS_OPENACC
+         !$acc update host(layerThicknessTend)
+         !$acc exit data copyout(surfaceThicknessFlux, surfaceThicknessFluxRunoff)
+         !$acc exit data delete(sshCur)
+#endif
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          !  If iterating, reset variables for next iteration
@@ -2382,7 +2371,13 @@ module ocn_time_integration_split
             !$acc exit data delete(lowFreqDivergenceCur)
             !$acc exit data delete(lowFreqDivergenceTend)
          endif
+         if (config_use_freq_filtered_thickness .or. associated(highFreqThicknessNew) ) then
+            !$acc exit data copyout(highFreqThicknessNew)
+         endif
+         !$acc exit data delete(layerThicknessTend)
+         !$acc exit data delete(layerThicknessCur)
          if (splitExplicitStep < numTSIterations) then
+
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
             !$acc exit data copyout(sshNew)
             !$acc update host(layerThickEdgeMean)
@@ -2408,15 +2403,13 @@ module ocn_time_integration_split
                !$acc exit data delete(landIcePressure)
                !$acc exit data delete(landIceDraft)
             endif
-            if (config_use_freq_filtered_thickness) then
-               !$acc exit data copyout(highFreqThicknessNew)
+            if (config_use_freq_filtered_thickness .or. associated(highFreqThicknessNew) ) then
                !$acc exit data delete(highFreqThicknessCur)
             endif
             if ( associated(frazilSurfacePressure) ) then
                !$acc exit data delete(frazilSurfacePressure)
             endif
          elseif (splitExplicitStep == numTSIterations) then
-            !$acc exit data delete(layerThicknessCur, layerThicknessTend)
             !$acc exit data delete(normalBaroclinicVelocityCur)
             if (config_compute_active_tracer_budgets) then
                !$acc update host(activeTracerHorizontalAdvectionEdgeFlux)
@@ -2666,7 +2659,7 @@ module ocn_time_integration_split
 
 #ifdef MPAS_OPENACC
       !$acc parallel loop present(surfaceVelocity, velocityZonal, velocityMeridional, &
-      !$acc   SSHGradient, gradSSHZonal, gradSSHMeridional)
+      !$acc   SSHGradient, gradSSHZonal, gradSSHMeridional, minLevelCell)
 #else
       !$omp parallel
       !$omp do schedule(runtime)
