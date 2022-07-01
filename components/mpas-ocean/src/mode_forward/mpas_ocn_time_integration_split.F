@@ -1728,7 +1728,13 @@ module ocn_time_integration_split
 
          endif ! split_explicit
 
+         call mpas_pool_get_array(forcingPool, 'surfaceThicknessFlux', &
+                                                surfaceThicknessFlux)
+         call mpas_pool_get_array(forcingPool, 'surfaceThicknessFluxRunoff', &
+                                                surfaceThicknessFluxRunoff)
+
 #ifdef MPAS_OPENACC
+         !$acc enter data create(layerThicknessTend, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
          !$acc enter data copyin(layerThicknessCur, sshCur)
          !$acc update device(layerThickEdgeFlux, normalTransportVelocity)
          if (associated(highFreqThicknessNew)) then
@@ -1776,15 +1782,6 @@ module ocn_time_integration_split
 
          call mpas_timer_stop('thick vert trans vel top')
 
-         call mpas_pool_get_array(forcingPool, 'surfaceThicknessFlux', &
-                                                surfaceThicknessFlux)
-         call mpas_pool_get_array(forcingPool, 'surfaceThicknessFluxRunoff', &
-                                                surfaceThicknessFluxRunoff)
-
-#ifdef MPAS_OPENACC
-         !$acc enter data create(layerThicknessTend, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
-#endif
-
          call ocn_tend_thick(tendPool, forcingPool)
 
          call mpas_timer_stop('se thick tend')
@@ -1797,15 +1794,9 @@ module ocn_time_integration_split
          call mpas_timer_stop("se halo thickness")
 
          call mpas_timer_start('se tracer tend', .false.)
-#ifdef MPAS_OPENACC
-         !$acc exit data copyout(layerThicknessTend, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
-         if (associated(highFreqThicknessNew)) then
-            !$acc exit data delete(highFreqThicknessNew)
-         endif
-         !$acc exit data delete(layerThicknessCur, sshCur)
 
+#ifdef MPAS_OPENACC
          !$acc enter data copyin(layerThicknessNew)
-         !$acc update device(layerThickEdgeFlux)
 #endif
 
          call ocn_tend_tracer(tendPool, statePool, forcingPool, &
@@ -1813,11 +1804,18 @@ module ocn_time_integration_split
                               dt, activeTracersOnly, 2)
 
 #ifdef MPAS_OPENACC
+         !$acc exit data copyout(layerThicknessTend, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
+         if (associated(highFreqThicknessNew)) then
+            !$acc exit data delete(highFreqThicknessNew)
+         endif
+         !$acc exit data delete(layerThicknessCur, sshCur)
+#endif
+
+#ifdef MPAS_OPENACC
          !$acc enter data copyin(normalVelocityNew)
          !$acc enter data copyin(normalBarotropicVelocityNew, &
          !$acc                   normalBaroclinicVelocityNew)
          !$acc enter data copyin(activeTracersNew)
-         !$acc update device(layerThickEdgeFlux)
          if (config_use_freq_filtered_thickness) then
             !$acc enter data copyin(lowFreqDivergenceNew)
             !$acc enter data copyin(lowFreqDivergenceCur)
