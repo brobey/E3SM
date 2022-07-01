@@ -1740,6 +1740,42 @@ module ocn_time_integration_split
          if (associated(highFreqThicknessNew)) then
             !$acc enter data copyin(highFreqThicknessNew)
          endif
+
+         !$acc enter data copyin(layerThicknessNew)
+         !$acc enter data copyin(normalVelocityNew)
+         !$acc enter data copyin(normalBarotropicVelocityNew, &
+         !$acc                   normalBaroclinicVelocityNew)
+         !$acc enter data copyin(activeTracersNew)
+         if (config_use_freq_filtered_thickness) then
+            !$acc enter data copyin(lowFreqDivergenceNew)
+            !$acc enter data copyin(lowFreqDivergenceCur)
+            !$acc enter data copyin(lowFreqDivergenceTend)
+         endif
+         if (splitExplicitStep < numTSIterations) then
+            !$acc update device (normalTransportVelocity, &
+            !$acc                normalGMBolusVelocity)
+            !$acc enter data copyin(atmosphericPressure, seaIcePressure)
+            !$acc enter data copyin(sshNew)
+            !$acc update device(tracersSurfaceValue)
+            if ( associated(frazilSurfacePressure) ) then
+               !$acc enter data copyin(frazilSurfacePressure)
+            endif
+            if (landIcePressureOn) then
+               !$acc enter data copyin(landIcePressure)
+               !$acc enter data copyin(landIceDraft)
+            endif
+         elseif (splitExplicitStep == numTSIterations) then
+            !$acc enter data copyin(normalBaroclinicVelocityCur)
+            if (config_compute_active_tracer_budgets) then
+               !$acc update device(activeTracerHorizontalAdvectionEdgeFlux)
+               !$acc update device(activeTracerHorizontalAdvectionTendency)
+               !$acc update device(activeTracerVerticalAdvectionTendency)
+               !$acc update device(activeTracerHorMixTendency)
+               !$acc update device(activeTracerSurfaceFluxTendency)
+               !$acc update device(temperatureShortWaveTendency)
+               !$acc update device(activeTracerNonLocalTendency)
+            endif
+         endif
 #endif
 
          call mpas_timer_stop("se btr vel")
@@ -1795,10 +1831,6 @@ module ocn_time_integration_split
 
          call mpas_timer_start('se tracer tend', .false.)
 
-#ifdef MPAS_OPENACC
-         !$acc enter data copyin(layerThicknessNew)
-#endif
-
          call ocn_tend_tracer(tendPool, statePool, forcingPool, &
                               meshPool, swForcingPool, &
                               dt, activeTracersOnly, 2)
@@ -1812,28 +1844,7 @@ module ocn_time_integration_split
 #endif
 
 #ifdef MPAS_OPENACC
-         !$acc enter data copyin(normalVelocityNew)
-         !$acc enter data copyin(normalBarotropicVelocityNew, &
-         !$acc                   normalBaroclinicVelocityNew)
-         !$acc enter data copyin(activeTracersNew)
-         if (config_use_freq_filtered_thickness) then
-            !$acc enter data copyin(lowFreqDivergenceNew)
-            !$acc enter data copyin(lowFreqDivergenceCur)
-            !$acc enter data copyin(lowFreqDivergenceTend)
-         endif
          if (splitExplicitStep < numTSIterations) then
-            !$acc update device (normalTransportVelocity, &
-            !$acc                normalGMBolusVelocity)
-            !$acc enter data copyin(atmosphericPressure, seaIcePressure)
-            !$acc enter data copyin(sshNew)
-            !$acc update device(tracersSurfaceValue)
-            if ( associated(frazilSurfacePressure) ) then
-               !$acc enter data copyin(frazilSurfacePressure)
-            endif
-            if (landIcePressureOn) then
-               !$acc enter data copyin(landIcePressure)
-               !$acc enter data copyin(landIceDraft)
-            endif
             if (config_use_freq_filtered_thickness) then
                !$acc enter data copyin(highFreqThicknessNew)
                !$acc enter data copyin(highFreqThicknessCur)
@@ -1841,16 +1852,6 @@ module ocn_time_integration_split
          elseif (splitExplicitStep == numTSIterations) then
             !$acc enter data copyin(layerThicknessCur)
             !$acc enter data copyin(layerThicknessTend)
-            !$acc enter data copyin(normalBaroclinicVelocityCur)
-            if (config_compute_active_tracer_budgets) then
-               !$acc update device(activeTracerHorizontalAdvectionEdgeFlux)
-               !$acc update device(activeTracerHorizontalAdvectionTendency)
-               !$acc update device(activeTracerVerticalAdvectionTendency)
-               !$acc update device(activeTracerHorMixTendency)
-               !$acc update device(activeTracerSurfaceFluxTendency)
-               !$acc update device(temperatureShortWaveTendency)
-               !$acc update device(activeTracerNonLocalTendency)
-            endif
          endif
 #endif
 
