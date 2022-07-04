@@ -1062,8 +1062,18 @@ module ocn_time_integration_split
                                              'tidalPotentialEta', &
                                               tidalPotentialEta)
 
+#ifdef MPAS_OPENACC
+                     !$acc enter data copyin(ssh_sal, tidalPotentialEta, sshSubcycleCur)
+                     !$acc enter data copyin(sshSubcycleCurWithTides)
+#endif
+
+#ifdef MPAS_OPENACC
+                     !$acc parallel loop present(ssh_sal, tidalPotentialEta, &
+                     !$acc    sshSubcycleCur, sshSubcycleCurWithTides)
+#else
                      !$omp parallel
                      !$omp do schedule(runtime)
+#endif
                      do iCell = 1, nCellsAll
                         sshSubcycleCurWithTides(iCell) = &
                                  sshSubcycleCur(iCell) - &
@@ -1072,8 +1082,15 @@ module ocn_time_integration_split
                            (1 - ssh_sal_on) * self_attraction_and_loading_beta* &
                                  sshSubcycleCur(iCell)
                      end do
+#ifndef MPAS_OPENACC
                      !$omp end do
                      !$omp end parallel
+#endif
+
+#ifdef MPAS_OPENACC
+                     !$acc exit data delete(ssh_sal, tidalPotentialEta, sshSubcycleCur)
+                     !$acc exit data copyout(sshSubcycleCurWithTides)
+#endif
 
                      call mpas_pool_get_array(forcingPool, &
                                           'sshSubcycleCurWithTides', &
@@ -1302,6 +1319,17 @@ module ocn_time_integration_split
                                              'tidalPotentialEta',  &
                                               tidalPotentialEta)
 
+#ifdef MPAS_OPENACC
+                     !$acc enter data copyin(ssh_sal, tidalPotentialEta, sshSubcycleCur, sshSubcycleNew) 
+                     !$acc enter data create(sshSubcycleNewWithTides, sshSubcycleCurWithTides)
+#endif
+
+#ifdef MPAS_OPENACC
+                     !$acc parallel loop present(ssh_sal, tidalPotentialEta, &
+                     !$acc                       sshSubcycleCur, sshSubcycleNew, &
+                     !$acc                       sshSubcycleNewWithTides, sshSubcycleCurWithTides)
+#endif
+
                      !$omp parallel
                      !$omp do schedule(runtime)
                      do iCell = 1, nCellsAll
@@ -1319,8 +1347,15 @@ module ocn_time_integration_split
                            (1 - ssh_sal_on) * self_attraction_and_loading_beta* &
                                  sshSubcycleNew(iCell)
                      end do
+#ifndef MPAS_OPENACC
                      !$omp end do
                      !$omp end parallel
+#endif
+
+#ifdef MPAS_OPENACC
+                     !$acc exit data copyout(sshSubcycleNewWithTides, sshSubcycleCurWithTides)
+                     !$acc exit data delete(ssh_sal, tidalPotentialEta, sshSubcycleCur, sshSubcycleNew) 
+#endif
 
                      call mpas_pool_get_array(forcingPool, &
                                     'sshSubcycleCurWithTides',  &
@@ -1335,14 +1370,29 @@ module ocn_time_integration_split
                   nEdges = nEdgesHalo(min(edgeHaloComputeCounter, &
                                           config_num_halos))
 
+#ifdef MPAS_OPENACC
+                  !$acc enter data copyin(normalBarotropicVelocitySubcycleNew, btrvel_temp)
+#endif
+
+#ifdef MPAS_OPENACC
+                  !$acc parallel loop present(normalBarotropicVelocitySubcycleNew, btrvel_temp)
+#else
                   !$omp parallel
                   !$omp do schedule(runtime)
+#endif
                   do iEdge = 1, nEdges+1
                      btrvel_temp(iEdge) = &
                          normalBarotropicVelocitySubcycleNew(iEdge)
                   end do
+#ifndef MPAS_OPENACC
                   !$omp end do
                   !$omp end parallel
+#endif
+
+#ifdef MPAS_OPENACC
+                  !$acc exit data delete(normalBarotropicVelocitySubcycleNew)
+                  !$acc exit data copyout(btrvel_temp)
+#endif
 
                   if (edgeHaloComputeCounter <= 1) then
                      nEdges = nEdgesOwned
@@ -1615,8 +1665,6 @@ module ocn_time_integration_split
 #ifdef MPAS_OPENACC
                !$acc enter data copyin(normalBarotropicVelocitySubcycleNew, normalBarotropicVelocityNew)
                !$acc parallel loop present(normalBarotropicVelocitySubcycleNew, normalBarotropicVelocityNew)
-!  1591, Generating implicit copyin(normalbarotropicvelocitysubcyclenew(1:nedgesall)) [if not already present]
-!        Generating implicit copy(normalbarotropicvelocitynew(1:nedgesall)) [if not already present]
 #else
                !$omp parallel
                !$omp do schedule(runtime)
