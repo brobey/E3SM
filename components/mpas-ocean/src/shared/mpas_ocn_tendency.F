@@ -1086,8 +1086,13 @@ contains
             call mpas_timer_stop("TTD " // groupName)
          endif ! TTD
 
+#ifdef MPAS_OPENACC
          !$acc enter data &
          !$acc    copyin(tracerGroup, tracerGroupTend)
+         if (computeBudgets) then
+            !$acc enter data copyin(activeTracerHorMixTendency)
+         endif
+#endif
 
          !
          ! Accumulate tendencies for all tracers
@@ -1100,15 +1105,6 @@ contains
                             layerThickness, dt, tracerGroupTend, &
                             computeBudgets)
 
-         !$acc update host (activeTracerHorizontalAdvectionEdgeFlux, &
-         !$acc              activeTracerHorizontalAdvectionTendency, &
-         !$acc              activeTracerVerticalAdvectionTopFlux, &
-         !$acc              activeTracerVerticalAdvectionTendency)
-
-         !$acc exit data &
-         !$acc    copyout(tracerGroupTend) &
-         !$acc    delete(tracerGroup)
-
          !
          ! Add horizontal tracer diffusion,
          !    eg del2 form: div(h \kappa_2 \nabla \phi)
@@ -1118,8 +1114,12 @@ contains
             ! compute budget contribution by taking the difference
             ! of the total tendency before and after the call
             ! here we store the before value for later subtraction
+#ifdef MPAS_OPENACC
+            !$acc parallel loop present(tracerGroupTend, activeTracerHorMixTendency)
+#else
             !$omp parallel
             !$omp do schedule(runtime) private(k,n)
+#endif
             do iCell = 1, nCellsAll
             do k=1,nVertLevels
             do n=1,nTracersGroup
@@ -1128,9 +1128,20 @@ contains
             enddo
             enddo
             enddo
+#ifndef MPAS_OPENACC
             !$omp end do
             !$omp end parallel
+#endif
          endif ! compute budgets
+
+#ifdef MPAS_OPENACC
+         !$acc exit data &
+         !$acc    copyout(tracerGroupTend) &
+         !$acc    delete(tracerGroup)
+         if (computeBudgets) then
+            !$acc exit data copyout(activeTracerHorMixTendency)
+         endif
+#endif
 
          call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
                                    layerThickness, zMid, tracerGroup, &
