@@ -713,10 +713,6 @@ module ocn_time_integration_split
                  vertAleTransportTop, err)
          endif
 
-#ifdef MPAS_OPENACC
-         !$acc update host(vertAleTransportTop)
-#endif
-
          call ocn_tend_vel(domain, tendPool, statePool, forcingPool, &
                            stage1_tend_time, domain % dminfo, dt)
 
@@ -835,7 +831,6 @@ module ocn_time_integration_split
 
             call mpas_timer_stop('bcl iters on linear Coriolis')
 #ifdef MPAS_OPENACC
-            !$acc update host(barotropicForcing)
             !$acc exit data delete(normalBaroclinicVelocityNew)
 #endif
 
@@ -873,7 +868,8 @@ module ocn_time_integration_split
 #ifdef MPAS_OPENACC
             !$acc enter data create(normalBarotropicVelocityNew)
             !$acc enter data copyin(normalBaroclinicVelocityNew, edgeMask, normalGMBolusVelocity)
-            !$acc parallel present(normalBaroclinicVelocityNew, normalBarotropicVelocityNew, edgeMask, normalGMBolusVelocity, normalTransportVelocity, normalVelocityNew, normalTransportVelocity)
+            !$acc parallel present(normalBaroclinicVelocityNew, normalBarotropicVelocityNew, &
+            !$acc    edgeMask, normalGMBolusVelocity, normalVelocityNew, normalTransportVelocity)
             !$acc loop gang
 #else
             !$omp parallel
@@ -898,7 +894,7 @@ module ocn_time_integration_split
             end do  ! iEdge
 #ifdef MPAS_OPENACC
             !$acc end parallel
-            !$acc exit data copyout(normalVelocityNew, normalTransportVelocity, normalBarotropicVelocityNew)
+            !$acc exit data copyout(normalVelocityNew, normalBarotropicVelocityNew)
             !$acc exit data delete(normalBaroclinicVelocityNew)
 #else
             !$omp end do
@@ -920,9 +916,6 @@ module ocn_time_integration_split
                                   oldBtrSubcycleTime)
 
 #ifdef MPAS_OPENACC
-            if (config_filter_btr_mode) then
-               !!!$acc enter data create(barotropicForcing)
-            endif
             !$acc enter data copyin(sshCur)
             !$acc enter data create(sshSubcycleCur)
             !$acc enter data copyin(normalBarotropicVelocityCur, normalBarotropicVelocityNew)
@@ -997,10 +990,6 @@ module ocn_time_integration_split
 #endif
 
 #ifdef MPAS_OPENACC
-            if (config_filter_btr_mode) then
-               !!!$acc exit data copyout(barotropicForcing)
-               !$acc update host(barotropicForcing)
-            endif
             !$acc exit data delete(sshCur)
             !$acc exit data copyout(sshSubcycleCur)
             !$acc exit data delete(normalBarotropicVelocityCur)
@@ -1537,7 +1526,7 @@ module ocn_time_integration_split
 
                   ! compute barotropic thickness flux on edges
 #ifdef MPAS_OPENACC
-                  !$acc enter data copyin(barotropicThicknessFlux)
+                  !$acc update device(barotropicThicknessFlux)
 
                   !$acc parallel loop present(bottomDepth, cellsOnEdge, &
                   !$acc   normalBarotropicVelocitySubcycleCur, &
@@ -1596,7 +1585,6 @@ module ocn_time_integration_split
 #endif
 
 #ifdef MPAS_OPENACC
-                  !$acc exit data delete(barotropicThicknessFlux)
                   !$acc exit data copyout(sshTend)
                   !$acc exit data delete(sshSubcycleCur)
                   !$acc exit data copyout(sshSubcycleNew)
@@ -1787,7 +1775,7 @@ module ocn_time_integration_split
 #ifdef MPAS_OPENACC
          !$acc enter data create(layerThicknessTend, surfaceThicknessFlux, surfaceThicknessFluxRunoff)
          !$acc enter data copyin(layerThicknessCur, sshCur)
-         !$acc update device(layerThickEdgeFlux, normalTransportVelocity)
+         !$acc update device(normalTransportVelocity)
          if (associated(highFreqThicknessNew)) then
             !$acc enter data copyin(highFreqThicknessNew)
          endif
@@ -1803,8 +1791,7 @@ module ocn_time_integration_split
             !$acc enter data copyin(lowFreqDivergenceTend)
          endif
          if (splitExplicitStep < numTSIterations) then
-            !$acc update device (normalTransportVelocity, &
-            !$acc                normalGMBolusVelocity)
+            !$acc update device (normalGMBolusVelocity)
             !$acc enter data copyin(atmosphericPressure, seaIcePressure)
             !$acc enter data copyin(sshNew)
             !$acc update device(tracersSurfaceValue)
@@ -2439,7 +2426,6 @@ module ocn_time_integration_split
 
             !$acc exit data delete (atmosphericPressure, seaIcePressure)
             !$acc exit data copyout(sshNew)
-            !$acc update host(layerThickEdgeMean)
             !$acc update host(relativeVorticity, circulation)
             !$acc update host(vertTransportVelocityTop, &
             !$acc             vertGMBolusVelocityTop, &
@@ -2493,8 +2479,6 @@ module ocn_time_integration_split
       ! implicit vmix routine that follows.
 #ifdef MPAS_OPENACC
       !$acc enter data copyin(layerThicknessNew, normalVelocityNew)
-      !$acc update device (normalTransportVelocity, &
-      !$acc                normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(sshNew)
       !$acc enter data copyin(activeTracersNew)
@@ -2513,7 +2497,7 @@ module ocn_time_integration_split
       call mpas_dmpar_field_halo_exch(domain, 'surfaceFrictionVelocity')
 
 #ifdef MPAS_OPENACC
-      !$acc update host(layerThickEdgeFlux, layerThickEdgeMean)
+      !$acc update host(layerThickEdgeMean)
       !$acc update host(relativeVorticity, circulation)
       !$acc update host(vertTransportVelocityTop, &
       !$acc             vertGMBolusVelocityTop, &
@@ -2620,8 +2604,7 @@ module ocn_time_integration_split
       if (config_prescribe_thickness) then
          !$acc enter data copyin(layerThicknessCur)
       endif
-      !$acc update device (normalTransportVelocity, &
-      !$acc                normalGMBolusVelocity)
+      !$acc update device (normalGMBolusVelocity)
       !$acc enter data copyin(atmosphericPressure, seaIcePressure)
       !$acc enter data copyin(sshNew)
       !$acc enter data copyin(activeTracersNew)
@@ -2687,14 +2670,6 @@ module ocn_time_integration_split
 
       call mpas_timer_start('se final mpas reconstruct', .false.)
 
-#ifdef MPAS_OPENACC
-      !$acc enter data create(velocityX, velocityY, velocityZ)
-      !$acc enter data create(velocityZonal, velocityMeridional)
-      !$acc enter data create(gradSSHX, gradSSHY, gradSSHZ)
-      !$acc enter data create(gradSSHZonal, gradSSHMeridional)
-      !$acc enter data create(surfaceVelocity, SSHGradient)
-#endif
-
       call mpas_reconstruct_gpu(meshPool, normalVelocityNew,       &
                                 velocityX, velocityY, velocityZ,   &
                                 velocityZonal, velocityMeridional, &
@@ -2730,7 +2705,7 @@ module ocn_time_integration_split
 #endif
 
 #ifdef MPAS_OPENACC
-      !$acc update host(layerThickEdgeFlux, layerThickEdgeMean)
+      !$acc update host(layerThickEdgeFlux)
       !$acc update host(relativeVorticity, circulation)
       !$acc update host(vertTransportVelocityTop, &
       !$acc             vertGMBolusVelocityTop, &
@@ -2773,11 +2748,6 @@ module ocn_time_integration_split
       if (config_prescribe_thickness) then
          !$acc exit data delete(layerThicknessCur)
       endif
-      !$acc exit data copyout(velocityX, velocityY, velocityZ)
-      !$acc exit data copyout(gradSSHX, gradSSHY, gradSSHZ)
-      !$acc exit data copyout(velocityZonal, velocityMeridional)
-      !$acc exit data copyout(gradSSHZonal, gradSSHMeridional)
-      !$acc exit data copyout(surfaceVelocity, SSHGradient)
 #endif
 
       call ocn_time_average_coupled_accumulate(statePool,forcingPool,2)
