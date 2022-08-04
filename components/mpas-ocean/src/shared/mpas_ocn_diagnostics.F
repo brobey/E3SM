@@ -1585,9 +1585,6 @@ contains
       real(kind=RKIND) :: dcEdge_temp, dvEdge_temp, r_tmp, weightsOnEdge_temp
 
       real (kind=RKIND), dimension(:), allocatable:: div_hu,div_huTransport,div_huGMBolus
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(div_hu, div_huTransport, div_huGMBolus)
-#endif
 
       ! Need owned cells for relativeVorticityCell
       nCells = nCellsOwned
@@ -1628,6 +1625,9 @@ contains
       ! Compute divergence, kinetic energy, and vertical velocity
       !
       allocate(div_hu(nVertLevels),div_huTransport(nVertLevels),div_huGMBolus(nVertLevels))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(div_hu, div_huTransport, div_huGMBolus)
+#endif
 
 #ifdef MPAS_OPENACC
       !$acc parallel loop gang vector &
@@ -1636,7 +1636,7 @@ contains
       !$acc                  maxLevelCell, normalVelocity, divergence, layerThicknessEdgeFlux, &
       !$acc                  normalTransportVelocity, normalGMBolusVelocity, vertVelocityTop, &
       !$acc                  vertTransportVelocityTop, vertGMBolusVelocityTop, invAreaCell, &
-      !$acc                  minLevelCell) &
+      !$acc                  minLevelCell, div_hu, div_huTransport, div_huGMBolus) &
       !$acc          private(invAreaCell1, i, iEdge, edgeSignOnCell_temp, dcEdge_temp, &
       !$acc                  dvEdge_temp, k, r_tmp)
 #else
@@ -1688,6 +1688,9 @@ contains
       !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(div_hu, div_huTransport, div_huGMBolus)
+#endif
       deallocate(div_hu,div_huTransport,div_huGMBolus)
 
       nEdges = nEdgesHalo( 2 )
@@ -2329,9 +2332,6 @@ contains
       ! ALE_Thickness: ALE thickness at new time
       !         units: none
       real (kind=RKIND), dimension(:,:), allocatable :: ALE_Thickness
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(div_hu)
-#endif
 
       err = 0
 
@@ -2349,6 +2349,9 @@ contains
       allocate(div_hu(nVertLevels, nCells), &
                projectedSSH(nCells), &
                ALE_Thickness(nVertLevels, nCells))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(div_hu)
+#endif
 
       ! Only need to compute over 0 and 1 halos
       nCells = nCellsHalo( 1 )
@@ -2364,7 +2367,7 @@ contains
       !$acc parallel loop &
       !$acc          present(invAreaCell, nEdgesOnCell, edgesOnCell, maxLevelEdgeTop, &
       !$acc                  layerThicknessEdgeFlux, normalVelocity, dvEdge, edgeSignOnCell, &
-      !$acc                  oldSSH, projectedSSH, minLevelEdgeBot) &
+      !$acc                  oldSSH, projectedSSH, minLevelEdgeBot, div_hu) &
       !$acc          private(div_hu_btr, invAreaCell1, i, iEdge, flux, k, kmin, kmax)
 #else
       !$omp parallel
@@ -2417,7 +2420,7 @@ contains
 
       !$acc parallel loop gang vector &
       !$acc          present(vertAleTransportTop, maxLevelCell, ALE_Thickness, &
-      !$acc                  oldLayerThickness, minLevelCell) &
+      !$acc                  oldLayerThickness, minLevelCell, div_hu) &
       !$acc          private(k)
 #else
       !$omp parallel
@@ -2438,6 +2441,9 @@ contains
       !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(div_hu)
+#endif
       deallocate(div_hu, &
                  projectedSSH, &
                  ALE_Thickness)
