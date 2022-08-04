@@ -1169,7 +1169,7 @@ contains
          ! Modify PV edge with upstream bias.
          !
 #ifdef MPAS_OPENACC
-         !$acc parallel loop, &
+         !$acc parallel loop &
          !$acc    present(minLevelEdgeTop, maxLevelEdgeBot, tangentialVelocity, &
          !$acc            normalVelocity, normalizedRelativeVorticityEdge)
 #else
