@@ -1004,18 +1004,16 @@ contains
       !                                       (positive points from vertex1 to vertex2)
       !                                units: s^{-1} m^{-1}
       real (kind=RKIND), dimension(:,:), allocatable :: vorticityGradientTangentialComponent
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(normalizedPlanetaryVorticityVertex, &
-      !$acc                         normalizedRelativeVorticityVertex, &
-      !$acc                         vorticityGradientNormalComponent, &
-      !$acc                         vorticityGradientTangentialComponent)
-#endif
 
       !
       ! Compute normalized relative and planetary vorticity
       !
       allocate(normalizedPlanetaryVorticityVertex(nVertLevels, nVerticesAll), &
                normalizedRelativeVorticityVertex(nVertLevels, nVerticesAll))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(normalizedPlanetaryVorticityVertex, &
+      !$acc                   normalizedRelativeVorticityVertex)
+#endif
 
       nVertices = nVerticesHalo( 2 )
 
@@ -1023,7 +1021,9 @@ contains
       !$acc parallel loop gang vector &
       !$acc          present(areaTriangle, maxLevelVertexBot, &
       !$acc                  layerThickness, kiteAreasOnVertex, &
-      !$acc                  relativeVorticity, fVertex, cellsOnVertex) &
+      !$acc                  relativeVorticity, fVertex, cellsOnVertex, &
+      !$acc                  normalizedPlanetaryVorticityVertex, &
+      !$acc                  normalizedRelativeVorticityVertex) &
       !$acc          private(invAreaTri1, layerThicknessVertex, k, i)
 #else
       !$omp parallel
@@ -1056,7 +1056,9 @@ contains
       !$acc          present(normalizedRelativeVorticityEdge, &
       !$acc                  normalizedPlanetaryVorticityEdge, &
       !$acc                  verticesOnEdge, maxLevelEdgeBot, &
-      !$acc                  minLevelEdgeTop) &
+      !$acc                  minLevelEdgeTop, &
+      !$acc                  normalizedPlanetaryVorticityVertex, &
+      !$acc                  normalizedRelativeVorticityVertex) &
       !$acc          private(vertex1, vertex2, k)
 #else
       !$omp parallel
@@ -1125,6 +1127,10 @@ contains
 
          allocate(vorticityGradientNormalComponent(nVertLevels, nEdges), &
                   vorticityGradientTangentialComponent(nVertLevels, nEdges))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(vorticityGradientNormalComponent, &
+      !$acc                   vorticityGradientTangentialComponent)
+#endif
 
          nEdges = nEdgesHalo( 1 )
 
@@ -1132,7 +1138,8 @@ contains
          !$acc parallel loop &
          !$acc    present(minLevelEdgeBot, maxLevelEdgeTop, cellsOnEdge, &
          !$acc            minLevelEdgeTop, maxLevelEdgeBot, dcEdge, dvEdge, &
-         !$acc            verticesOnedge, normalizedRelativeVorticityCell)
+         !$acc            verticesOnedge, normalizedRelativeVorticityCell, &
+         !$acc            vorticityGradientNormalComponent, vorticityGradientTangentialComponent)
 #else
          !$omp parallel
          !$omp do schedule(runtime) private(cell1, cell2, vertex1, vertex2, invLength, k)
@@ -1176,7 +1183,9 @@ contains
 #ifdef MPAS_OPENACC
          !$acc parallel loop &
          !$acc    present(minLevelEdgeTop, maxLevelEdgeBot, tangentialVelocity, &
-         !$acc            normalVelocity, normalizedRelativeVorticityEdge)
+         !$acc            normalVelocity, normalizedRelativeVorticityEdge, &
+         !$acc            vorticityGradientNormalComponent, &
+         !$acc            vorticityGradientTangentialComponent)
 #else
          !$omp do schedule(runtime) private(k)
 #endif
@@ -1196,14 +1205,21 @@ contains
          !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(vorticityGradientNormalComponent, &
+      !$acc                  vorticityGradientTangentialComponent)
+#endif
          deallocate(vorticityGradientNormalComponent, &
                     vorticityGradientTangentialComponent)
 
       endif
 
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(normalizedPlanetaryVorticityVertex, &
+      !$acc                  normalizedRelativeVorticityVertex)
+#endif
       deallocate(normalizedPlanetaryVorticityVertex, &
                  normalizedRelativeVorticityVertex)
-
 
    end subroutine ocn_diagnostic_solve_vorticity!}}}
 
@@ -2071,9 +2087,6 @@ contains
       integer :: k
 
       real (kind=RKIND), dimension(:), allocatable:: pTop
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(pTop)
-#endif
 
       !
       ! Pressure
@@ -2088,10 +2101,13 @@ contains
         ! Compute pressure at top of each layer, and then Montgomery Potential.
 
         allocate(pTop(nVertLevels))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(pTop)
+#endif
 
 #ifdef MPAS_OPENACC
         !$acc parallel loop present(minLevelCell, bottomdepth, montgomeryPotential, &
-        !$acc                       density, layerThickness)
+        !$acc                       density, layerThickness, pTop)
 #else
         !$omp parallel
         !$omp do schedule(runtime) private(pTop, k)
@@ -2119,6 +2135,9 @@ contains
         !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(pTop)
+#endif
         deallocate(pTop)
 
       else
