@@ -67,9 +67,6 @@ module ocn_equation_of_state_wright
 
    real (kind=RKIND), dimension(:,:), allocatable :: &
       tracerTemp, tracerSalt, boussinesqPres
-#ifdef MPAS_OPENACC
-   !$acc declare device_resident(tracerTemp, tracerSalt, boussinesqPres)
-#endif
 
    !*** valid range of T,S for Wright (1997) EOS
    !***   allowing T to become more negative because of sub-ice-shelf cavities
@@ -202,6 +199,9 @@ contains
       allocate(tracerTemp(nVertLevels, nCells))
       allocate(tracerSalt(nVertLevels, nCells))
       allocate(boussinesqPres(nVertLevels, nCells))
+#ifdef MPAS_OPENACC
+   !$acc enter data create(tracerTemp, tracerSalt, boussinesqPres)
+#endif
 
       if (displacementType == 'surfaceDisplaced') then
          call compute_surface_displaced_T_S(nVertLevels, nCells, indexT,      &
@@ -218,7 +218,10 @@ contains
 
 #ifdef MPAS_OPENACC
       !$acc parallel loop gang vector collapse(2) &
-      !$acc&   present(density)
+      !$acc&   present(density, &
+      !$acc&           tracerTemp, &
+      !$acc&           tracerSalt, &
+      !$acc&           boussinesqPres)
 #else
       !$omp parallel
       !$omp do schedule(runtime) &
@@ -249,6 +252,9 @@ contains
       !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+   !$acc exit data delete(tracerTemp, tracerSalt, boussinesqPres)
+#endif
       deallocate(tracerTemp)
       deallocate(tracerSalt)
       deallocate(boussinesqPres)
@@ -365,6 +371,9 @@ contains
       allocate(tracerTemp(nVertLevels, nCells))
       allocate(tracerSalt(nVertLevels, nCells))
       allocate(boussinesqPres(nVertLevels, nCells))
+#ifdef MPAS_OPENACC
+   !$acc enter data create(tracerTemp, tracerSalt, boussinesqPres)
+#endif
 
       if (displacementType == 'surfaceDisplaced') then
          call compute_surface_displaced_T_S(nVertLevels, nCells, indexT,      &
@@ -383,7 +392,10 @@ contains
       !$acc parallel loop gang vector collapse(2)     &
       !$acc&   present(density, &
       !$acc&           thermalExpansionCoeff,         &
-      !$acc&           salineContractionCoeff)
+      !$acc&           salineContractionCoeff,        &
+      !$acc&           tracerTemp, &
+      !$acc&           tracerSalt, &
+      !$acc&           boussinesqPres)
 #else
       !$omp parallel
       !$omp do schedule(runtime) &
@@ -432,6 +444,9 @@ contains
       !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+   !$acc exit data delete(tracerTemp, tracerSalt, boussinesqPres)
+#endif
       deallocate(tracerTemp)
       deallocate(tracerSalt)
       deallocate(boussinesqPres)

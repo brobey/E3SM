@@ -842,18 +842,19 @@ contains
       ! kineticEnergyVertexOnCells: kinetic energy of horizontal velocity defined at vertices
       !                      units: m^2 s^{-2}
       real (kind=RKIND), dimension(:,:), allocatable :: kineticEnergyVertexOnCells
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(kineticEnergyVertex, kineticEnergyVertexOnCells)
-#endif
 
       nCells = nCellsHalo( 2 )
       nVertices = nVerticesAll
 
       allocate(kineticEnergyVertex(nVertLevels, nVertices), &
                kineticEnergyVertexOnCells(nVertLevels, nCells))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(kineticEnergyVertex, kineticEnergyVertexOnCells)
+#endif
 
 #ifdef MPAS_OPENACC
-      !$acc parallel loop present(areaTriangle, dcEdge, dvEdge, normalVelocity, edgesOnVertex)
+      !$acc parallel loop present(areaTriangle, dcEdge, dvEdge, normalVelocity, edgesOnVertex, &
+      !$acc   kineticEnergyVertex, kineticEnergyVertexOnCells)
 #else
       !$omp parallel
       !$omp do schedule(runtime) private(i, iEdge, r_tmp, k)
@@ -876,7 +877,8 @@ contains
 #endif
 
 #ifdef MPAS_OPENACC
-      !$acc parallel loop present(kiteIndexOnCell, kiteAreasOnVertex, invAreaCell, verticesOnCell, nEdgesOnCell)
+      !$acc parallel loop present(kiteIndexOnCell, kiteAreasOnVertex, invAreaCell, verticesOnCell, nEdgesOnCell, &
+      !$acc   kineticEnergyVertex, kineticEnergyVertexOnCells)
 #else
       !$omp do schedule(runtime) private(invAreaCell1, i, j, iVertex, k)
 #endif
@@ -918,6 +920,9 @@ contains
       !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(kineticEnergyVertex, kineticEnergyVertexOnCells)
+#endif
       deallocate(kineticEnergyVertex, &
                  kineticEnergyVertexOnCells)
 
@@ -2849,9 +2854,6 @@ contains
 
       ! Scratch Arrays
       real (kind=RKIND), dimension(:), allocatable ::  blTempScratch, blSaltScratch
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(blTempScratch, blSaltScratch)
-#endif
 
       ! constants for Holland and Jenkins 1999 parameterization of the boundary layer
       real (kind=RKIND), parameter :: &
@@ -2876,6 +2878,9 @@ contains
 
       allocate(blTempScratch(nCellsAll), &
                blSaltScratch(nCellsAll))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(blTempScratch, blSaltScratch)
+#endif
 
       ! Compute top drag
 #ifdef MPAS_OPENACC
@@ -2927,7 +2932,8 @@ contains
 
       ! average temperature and salinity over horizontal neighbors and the sub-ice-shelf boundary layer
 #ifdef MPAS_OPENACC
-      !$acc parallel loop present(minLevelCell, maxLevelCell, layerThickness, activeTracers)
+      !$acc parallel loop present(minLevelCell, maxLevelCell, layerThickness, activeTracers, &
+      !$acc    blTempScratch, blSaltScratch)
 #else
       !$omp do schedule(runtime) private(blThickness, iLevel, dz)
 #endif
@@ -2953,7 +2959,7 @@ contains
 
 #ifdef MPAS_OPENACC
       !$acc parallel loop present(cellsOnCell, nEdgesOnCell, minLevelCell) &
-      !$acc    present(landIceBoundaryLayerTracers, cellMask)
+      !$acc    present(landIceBoundaryLayerTracers, cellMask, blTempScratch, blSaltScratch)
 #else
       !$omp do schedule(runtime) private(weightSum, i, cell2)
 #endif
@@ -3026,6 +3032,9 @@ contains
 #endif
       end if
 
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(blTempScratch, blSaltScratch)
+#endif
       deallocate(blTempScratch, &
                  blSaltScratch)
 

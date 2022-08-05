@@ -122,9 +122,6 @@ contains
       ! effectiveDensityScratch: effective seawater density in land ice before horizontal averaging
       !                   units: kg m^{-3}
       real (kind=RKIND), dimension(:), allocatable :: effectiveDensityScratch
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(effectiveDensityScratch)
-#endif
 
       ierr = 0
 
@@ -145,9 +142,13 @@ contains
       call mpas_pool_get_array(statePool, 'effectiveDensityInLandIce', effectiveDensityNew, 2)
 
       allocate(effectiveDensityScratch(nCells))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(effectiveDensityScratch)
+#endif
 
 #ifdef MPAS_OPENACC
-      !$acc parallel present(ssh, landIcePressure, landIceMask, nEdgesOnCell, cellsOnCell, cellMask)
+      !$acc parallel present(ssh, landIcePressure, landIceMask, nEdgesOnCell, cellsOnCell, &
+      !$acc    cellMask, effectiveDensityScratch)
 #endif
 
 #ifdef MPAS_OPENACC
@@ -171,7 +172,7 @@ contains
 #endif
 
 #ifdef MPAS_OPENACC
-      !$acc loop private(weightSum)
+      !$acc loop private(weightSum, effectiveDensityScratch)
 #else
       !$omp do schedule(runtime) private(weightSum, i, cell2)
 #endif
@@ -194,6 +195,9 @@ contains
       !$omp end parallel
 #endif
 
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(effectiveDensityScratch)
+#endif
       deallocate(effectiveDensityScratch)
 
    !--------------------------------------------------------------------
