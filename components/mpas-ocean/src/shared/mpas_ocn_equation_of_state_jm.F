@@ -221,9 +221,6 @@ contains
       real (kind=RKIND), dimension(:,:), allocatable :: &
          tracerTemp,          &! modified temperature
          tracerSalt            ! modified salinity
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(tracerTemp, tracerSalt)
-#endif
 
       real (kind=RKIND) :: &
          work1, work2,     &! temporary scalars for calc
@@ -309,12 +306,16 @@ contains
       ! For OpenACC, these are device resident only
       allocate(tracerTemp(nVertLevels,nCells), &
                tracerSalt(nVertLevels,nCells))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(tracerTemp, tracerSalt)
+#endif
 
       if (displacementType == 'surfaceDisplaced') then
 
 #ifdef MPAS_OPENACC
          !$acc parallel loop gang vector collapse(2) &
-         !$acc&  present(tracerssurfacelayervalue)
+         !$acc   present(tracerssurfacelayervalue, &
+         !$acc     tracerTemp, tracerSalt)
 #else
          !$omp parallel
          !$omp do schedule(runtime) private(k, tq, sq)
@@ -338,7 +339,7 @@ contains
 
 #ifdef MPAS_OPENACC
          !$acc parallel loop gang vector collapse(2) &
-         !$acc&  present(tracers)
+         !$acc&  present(tracers, tracerTemp, tracerSalt)
 #else
          !$omp parallel
          !$omp do schedule(runtime) private(k, tq, sq)
@@ -360,7 +361,7 @@ contains
 
 #ifdef MPAS_OPENACC
       !$acc parallel loop gang vector collapse(2) &
-      !$acc&   present(density, p, p2)
+      !$acc&   present(density, p, p2, tracerSalt, tracerTemp)
 #else
       !$omp parallel
       !$omp do schedule(runtime) &
@@ -418,10 +419,13 @@ contains
 #endif
 
 #ifdef MPAS_OPENACC
+      !$acc exit data delete(tracerTemp, tracerSalt)
+#endif
+      deallocate(tracerTemp, tracerSalt)
+#ifdef MPAS_OPENACC
       !$acc exit data delete(p, p2)
 #endif
       deallocate(p,p2)
-      deallocate(tracerTemp, tracerSalt)
 
    !--------------------------------------------------------------------
 
@@ -531,9 +535,6 @@ contains
       real (kind=RKIND), dimension(:,:), allocatable :: &
          tracerTemp,          &! modified temperature
          tracerSalt            ! modified salinity
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(tracerTemp, tracerSalt)
-#endif
 
       !-----------------------------------------------------------------
 
@@ -611,12 +612,15 @@ contains
       ! For OpenACC, these are device resident only
       allocate(tracerTemp(nVertLevels,nCells), &
                tracerSalt(nVertLevels,nCells))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(tracerTemp, tracerSalt)
+#endif
 
       if (displacementType == 'surfaceDisplaced') then
 
 #ifdef MPAS_OPENACC
          !$acc parallel loop gang vector collapse(2) &
-         !$acc&  present(tracerssurfacelayervalue)
+         !$acc&  present(tracerssurfacelayervalue, tracerTemp, tracerSalt)
 #else
          !$omp parallel
          !$omp do schedule(runtime) private(k, tq, sq)
@@ -640,7 +644,7 @@ contains
 
 #ifdef MPAS_OPENACC
          !$acc parallel loop gang vector collapse(2) &
-         !$acc&  present(tracers)
+         !$acc&  present(tracers, tracerTemp, tracerSalt)
 #else
          !$omp parallel
          !$omp do schedule(runtime) private(k, tq, sq)
@@ -664,7 +668,9 @@ contains
       !$acc parallel loop gang vector collapse(2)     &
       !$acc&   present(density, p, p2,                &
       !$acc&           thermalExpansionCoeff,         &
-      !$acc&           salineContractionCoeff)
+      !$acc&           salineContractionCoeff,        &
+      !$acc&           tracerSalt,                    &
+      !$acc&           tracerTemp)
 #else
       !$omp parallel
       !$omp do schedule(runtime) &
@@ -768,10 +774,13 @@ contains
 #endif
 
 #ifdef MPAS_OPENACC
+      !$acc exit data delete(tracerTemp, tracerSalt)
+#endif
+      deallocate(tracerTemp, tracerSalt)
+#ifdef MPAS_OPENACC
       !$acc exit data delete(p, p2)
 #endif
       deallocate(p,p2)
-      deallocate(tracerTemp, tracerSalt)
 
    !--------------------------------------------------------------------
 

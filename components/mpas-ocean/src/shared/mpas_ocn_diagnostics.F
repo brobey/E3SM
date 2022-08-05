@@ -2643,9 +2643,6 @@ contains
       !                          layer within the column
       !                   units: kg m^{-3}
       real (kind=RKIND), dimension(:,:), allocatable :: densitySurfaceDisplaced
-#ifdef MPAS_OPENACC
-      !$acc declare device_resident(densitySurfaceDisplaced)
-#endif
       ! thermalExpansionCoeff: Thermal expansion coefficient (alpha), defined as $-1/\rho
       !                        d\rho/dT$ (note negative sign)
       !                 units: C^{-1}
@@ -2698,6 +2695,9 @@ contains
       allocate(densitySurfaceDisplaced(nVertLevels, nCells), &
                thermalExpansionCoeff(nVertLevels, nCells), &
                salineContractionCoeff(nVertLevels, nCells))
+#ifdef MPAS_OPENACC
+      !$acc enter data create(densitySurfaceDisplaced)
+#endif
 
       ! Only need to compute over the 0 and 1 halos
       nCells = nCellsHalo( 2 )
@@ -2789,6 +2789,9 @@ contains
 #endif
 
       ! deallocate scratch space
+#ifdef MPAS_OPENACC
+      !$acc exit data delete(densitySurfaceDisplaced)
+#endif
       deallocate(thermalExpansionCoeff, &
                  salineContractionCoeff, &
                  densitySurfaceDisplaced)
